@@ -1,0 +1,8 @@
+- id: security-audit-diff
+  name: security-audit (LLM diff review)
+  description: Reviews staged diff for security vulnerabilities via Claude API.
+  entry: scripts/pre-commit-hook.sh
+  language: script
+  pass_filenames: false
+  stages: [commit]
+  require_serial: true

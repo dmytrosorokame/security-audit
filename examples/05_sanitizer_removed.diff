@@ -1,0 +1,14 @@
+diff --git a/apps/web/src/Markdown.tsx b/apps/web/src/Markdown.tsx
+index 999..888 100644
+--- a/apps/web/src/Markdown.tsx
++++ b/apps/web/src/Markdown.tsx
+@@ -1,9 +1,8 @@
+ import { marked } from 'marked';
+-import DOMPurify from 'dompurify';
+
+ export function Markdown({ source }: { source: string }) {
+   const html = marked.parse(source);
+-  const safe = DOMPurify.sanitize(html);
+-  return <div dangerouslySetInnerHTML={{ __html: safe }} />;
++  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+ }

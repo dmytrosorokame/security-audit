@@ -1,0 +1,174 @@
+name: 'security-audit'
+description: 'LLM-driven security review for pull requests. Analyzes the diff with Claude and posts findings as a PR comment.'
+author: 'Dmytro Soroka'
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  anthropic-api-key:
+    description: 'Anthropic API key. Required.'
+    required: true
+  base-ref:
+    description: 'Git ref to diff against. Default: PR base ref (auto-detected from $GITHUB_BASE_REF).'
+    required: false
+    default: ''
+  model:
+    description: 'Model alias or full ID. sonnet (default) | haiku | claude-sonnet-4-6 | ...'
+    required: false
+    default: 'sonnet'
+  fail-on:
+    description: 'Block PR on findings of this severity or higher. critical | high | medium | low | info | none.'
+    required: false
+    default: 'critical'
+  comment-on-pr:
+    description: 'Post results as a PR comment.'
+    required: false
+    default: 'true'
+  upload-sarif:
+    description: 'Upload SARIF to GitHub Code Scanning.'
+    required: false
+    default: 'false'
+  include:
+    description: 'Comma-separated file globs to include (e.g. "**/*.ts,**/*.tsx").'
+    required: false
+    default: ''
+  exclude:
+    description: 'Comma-separated file globs to exclude beyond the defaults.'
+    required: false
+    default: ''
+  max-files:
+    description: 'Cap on files analyzed per run (large PRs get truncated).'
+    required: false
+    default: '50'
+
+outputs:
+  findings-count:
+    description: 'Total number of findings.'
+    value: ${{ steps.run.outputs.findings_count }}
+  highest-severity:
+    description: 'Highest severity found (critical|high|medium|low|info|none).'
+    value: ${{ steps.run.outputs.highest_severity }}
+  report-path:
+    description: 'Path to the JSON report.'
+    value: ${{ steps.run.outputs.report_path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install security-audit deps
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        if [ -f pnpm-lock.yaml ]; then
+          npm install -g pnpm
+          pnpm install --frozen-lockfile --ignore-workspace
+        else
+          npm install --no-audit --no-fund
+        fi
+
+    - name: Determine base ref
+      id: base
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.base-ref }}" ]; then
+          REF="${{ inputs.base-ref }}"
+        elif [ -n "$GITHUB_BASE_REF" ]; then
+          REF="origin/$GITHUB_BASE_REF"
+        else
+          REF="origin/main"
+        fi
+        echo "ref=$REF" >> $GITHUB_OUTPUT
+        echo "Using base ref: $REF"
+
+    - name: Run security-audit scan
+      id: run
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        set -o pipefail
+        ACTION_PATH="${{ github.action_path }}"
+
+        # Build include/exclude args
+        INCLUDE_ARGS=""
+        IFS=',' read -ra INCS <<< "${{ inputs.include }}"
+        for g in "${INCS[@]}"; do
+          [ -n "$g" ] && INCLUDE_ARGS+=" --include=$g"
+        done
+        EXCLUDE_ARGS=""
+        IFS=',' read -ra EXCS <<< "${{ inputs.exclude }}"
+        for g in "${EXCS[@]}"; do
+          [ -n "$g" ] && EXCLUDE_ARGS+=" --exclude=$g"
+        done
+
+        REPORT_DIR="$RUNNER_TEMP/security-audit"
+        mkdir -p "$REPORT_DIR"
+
+        # Run, capturing JSON and exit code (don't fail step yet — we want to comment first)
+        EXIT=0
+        node "$ACTION_PATH/scripts/scan_diff.mjs" \
+          --against=${{ steps.base.outputs.ref }} \
+          --model=${{ inputs.model }} \
+          --fail-on=${{ inputs.fail-on }} \
+          --format=json \
+          --output="$REPORT_DIR/report.json" \
+          --max-files=${{ inputs.max-files }} \
+          $INCLUDE_ARGS $EXCLUDE_ARGS || EXIT=$?
+
+        # Also produce PR comment markdown + SARIF
+        node "$ACTION_PATH/scripts/format_pr_comment.mjs" \
+          --input="$REPORT_DIR/report.json" \
+          --commit-sha=${{ github.sha }} \
+          > "$REPORT_DIR/pr-comment.md" || true
+
+        node "$ACTION_PATH/scripts/format_sarif.mjs" \
+          --input="$REPORT_DIR/report.json" \
+          --output="$REPORT_DIR/report.sarif" || true
+
+        # Surface outputs
+        COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$REPORT_DIR/report.json')).findings.length)" 2>/dev/null || echo 0)
+        HIGHEST=$(node -e "
+          const r = JSON.parse(require('fs').readFileSync('$REPORT_DIR/report.json'));
+          const rank = ['critical','high','medium','low','info'];
+          const top = rank.find(s => (r.summary?.by_severity?.[s] || 0) > 0) || 'none';
+          console.log(top);
+        " 2>/dev/null || echo none)
+
+        echo "findings_count=$COUNT" >> $GITHUB_OUTPUT
+        echo "highest_severity=$HIGHEST" >> $GITHUB_OUTPUT
+        echo "report_path=$REPORT_DIR/report.json" >> $GITHUB_OUTPUT
+        echo "comment_path=$REPORT_DIR/pr-comment.md" >> $GITHUB_OUTPUT
+        echo "sarif_path=$REPORT_DIR/report.sarif" >> $GITHUB_OUTPUT
+        echo "scan_exit_code=$EXIT" >> $GITHUB_OUTPUT
+
+    - name: Post PR comment
+      if: ${{ github.event_name == 'pull_request' && inputs.comment-on-pr == 'true' }}
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        header: security-audit
+        path: ${{ steps.run.outputs.comment_path }}
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: ${{ inputs.upload-sarif == 'true' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.run.outputs.sarif_path }}
+
+    - name: Enforce severity gate
+      shell: bash
+      run: |
+        EXIT=${{ steps.run.outputs.scan_exit_code }}
+        if [ "$EXIT" = "2" ]; then
+          echo "::error::security-audit found findings at or above --fail-on threshold (${{ inputs.fail-on }}). Highest: ${{ steps.run.outputs.highest_severity }}."
+          exit 1
+        elif [ "$EXIT" = "3" ]; then
+          echo "::error::security-audit tool error (exit 3)."
+          exit 1
+        fi
+        echo "security-audit completed — ${{ steps.run.outputs.findings_count }} finding(s), highest=${{ steps.run.outputs.highest_severity }}."

@@ -1,0 +1,55 @@
+{
+  "name": "security-audit",
+  "version": "0.1.0",
+  "description": "LLM-driven diff security audit agent. Analyzes git diffs (PR or commit) for OWASP/CWE-mapped vulnerabilities using Claude.",
+  "keywords": [
+    "security",
+    "audit",
+    "owasp",
+    "cwe",
+    "sast",
+    "llm",
+    "claude",
+    "anthropic",
+    "diff",
+    "pull-request",
+    "pre-commit"
+  ],
+  "license": "MIT",
+  "author": "Dmytro Soroka",
+  "homepage": "https://github.com/dmytrosorokame/security-audit",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmytrosorokame/security-audit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dmytrosorokame/security-audit/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "scripts/scan_diff.mjs",
+  "bin": {
+    "scan-diff": "scripts/scan_diff.mjs",
+    "security-audit": "scripts/scan_diff.mjs"
+  },
+  "files": [
+    "scripts/",
+    "prompts/",
+    "references/",
+    "action.yml",
+    "SKILL.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "scan": "node scripts/scan_diff.mjs",
+    "extract": "node scripts/extract_diff.mjs",
+    "benchmark": "node benchmark/run_benchmark.mjs",
+    "test:smoke": "node scripts/scan_diff.mjs --help"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0"
+  }
+}

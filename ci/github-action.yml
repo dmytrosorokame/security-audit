@@ -1,0 +1,41 @@
+# .github/workflows/security-audit.yml — copy this file into the *consumer* repo.
+#
+# Tells security-audit to review every pull request, post a sticky PR comment
+# with findings, and fail the workflow if any finding is at or above
+# the configured severity gate.
+#
+# Setup:
+#   1. Create an ANTHROPIC_API_KEY repo secret (Settings → Secrets and variables → Actions).
+#   2. Copy this file to .github/workflows/security-audit.yml in your repo.
+#   3. (Optional) Adjust `model`, `fail-on`, `include`, etc.
+
+name: Security Audit
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+
+permissions:
+  contents: read          # read repository
+  pull-requests: write    # post PR comment
+  security-events: write  # required only if upload-sarif=true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # required to diff against base branch
+
+      - uses: dmytrosorokame/security-audit@v1
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # ---- Optional knobs ----
+          model: sonnet                      # sonnet (default) | haiku | <exact-model-id>
+          fail-on: critical                  # critical | high | medium | low | info | none
+          comment-on-pr: true                # post sticky PR comment
+          upload-sarif: false                # set true to publish to GitHub Code Scanning
+          # include: "**/*.ts,**/*.tsx"      # whitelist patterns
+          # exclude: "**/*.snap,**/fixtures/**"
+          # max-files: 50
