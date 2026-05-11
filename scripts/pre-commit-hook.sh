@@ -24,30 +24,42 @@ fi
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$HOOK_DIR/.." && pwd)"
 
-# Fall back to a per-user API key file if env is not set
-if [ -z "$ANTHROPIC_API_KEY" ] && [ -f "$HOME/.config/security-audit/key" ]; then
-  ANTHROPIC_API_KEY="$(cat "$HOME/.config/security-audit/key" | tr -d '[:space:]')"
-  export ANTHROPIC_API_KEY
-fi
+# Fall back to per-user API key files if env is not set
+for KEY_VAR in ANTHROPIC_API_KEY OPENAI_API_KEY; do
+  if [ -z "${!KEY_VAR}" ]; then
+    KEY_FILE="$HOME/.config/security-audit/$(echo "$KEY_VAR" | tr '[:upper:]' '[:lower:]' | sed 's/_api_key/-key/')"
+    if [ -f "$KEY_FILE" ]; then
+      export "$KEY_VAR"="$(cat "$KEY_FILE" | tr -d '[:space:]')"
+    fi
+  fi
+done
 
-if [ -z "$ANTHROPIC_API_KEY" ]; then
+# Need at least one provider key
+if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
   cat >&2 <<EOF
-[security-audit] ANTHROPIC_API_KEY not set. Skipping security review.
-  Set it in your shell, or save it to ~/.config/security-audit/key.
+[security-audit] No provider API key set. Skipping security review.
+  Set ANTHROPIC_API_KEY or OPENAI_API_KEY in your shell, or save to:
+    ~/.config/security-audit/anthropic-key
+    ~/.config/security-audit/openai-key
   To bypass without configuring, set SECURITY_AUDIT_SKIP=1.
 EOF
   exit 0
 fi
 
 FAIL_ON="${SECURITY_AUDIT_FAIL_ON:-critical}"
-MODEL="${SECURITY_AUDIT_MODEL:-sonnet}"
+PROVIDER="${SECURITY_AUDIT_PROVIDER:-auto}"
+MODEL_ARG=""
+if [ -n "${SECURITY_AUDIT_MODEL:-}" ]; then
+  MODEL_ARG="--model=$SECURITY_AUDIT_MODEL"
+fi
 
-echo "[security-audit] Reviewing staged changes (fail-on=$FAIL_ON, model=$MODEL)..."
+echo "[security-audit] Reviewing staged changes (provider=$PROVIDER, fail-on=$FAIL_ON)..."
 
 # Run the scan against staged changes
 if node "$REPO_DIR/scripts/scan_diff.mjs" \
      --staged \
-     --model="$MODEL" \
+     --provider="$PROVIDER" \
+     $MODEL_ARG \
      --fail-on="$FAIL_ON" \
      --format=cli \
      --no-color; then

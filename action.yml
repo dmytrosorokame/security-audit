@@ -7,16 +7,25 @@ branding:
 
 inputs:
   anthropic-api-key:
-    description: 'Anthropic API key. Required.'
-    required: true
+    description: 'Anthropic API key. Provide either this or openai-api-key.'
+    required: false
+    default: ''
+  openai-api-key:
+    description: 'OpenAI API key. Provide either this or anthropic-api-key.'
+    required: false
+    default: ''
+  provider:
+    description: 'LLM provider: auto | anthropic | openai. Default: auto (uses whichever key is set).'
+    required: false
+    default: 'auto'
   base-ref:
     description: 'Git ref to diff against. Default: PR base ref (auto-detected from $GITHUB_BASE_REF).'
     required: false
     default: ''
   model:
-    description: 'Model alias or full ID. sonnet (default) | haiku | claude-sonnet-4-6 | ...'
+    description: 'Model alias or full ID. anthropic: sonnet|haiku|opus|<id>. openai: best|cheap|4o|mini|<id>. Default: provider default.'
     required: false
-    default: 'sonnet'
+    default: ''
   fail-on:
     description: 'Block PR on findings of this severity or higher. critical | high | medium | low | info | none.'
     required: false
@@ -86,11 +95,20 @@ runs:
         echo "ref=$REF" >> $GITHUB_OUTPUT
         echo "Using base ref: $REF"
 
+    - name: Validate provider configuration
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.anthropic-api-key }}" ] && [ -z "${{ inputs.openai-api-key }}" ]; then
+          echo "::error::security-audit requires either anthropic-api-key or openai-api-key input."
+          exit 1
+        fi
+
     - name: Run security-audit scan
       id: run
       shell: bash
       env:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
       run: |
         set -o pipefail
         ACTION_PATH="${{ github.action_path }}"
@@ -107,6 +125,12 @@ runs:
           [ -n "$g" ] && EXCLUDE_ARGS+=" --exclude=$g"
         done
 
+        # Optional model flag (empty → provider default)
+        MODEL_ARG=""
+        if [ -n "${{ inputs.model }}" ]; then
+          MODEL_ARG="--model=${{ inputs.model }}"
+        fi
+
         REPORT_DIR="$RUNNER_TEMP/security-audit"
         mkdir -p "$REPORT_DIR"
 
@@ -114,7 +138,8 @@ runs:
         EXIT=0
         node "$ACTION_PATH/scripts/scan_diff.mjs" \
           --against=${{ steps.base.outputs.ref }} \
-          --model=${{ inputs.model }} \
+          --provider=${{ inputs.provider }} \
+          $MODEL_ARG \
           --fail-on=${{ inputs.fail-on }} \
           --format=json \
           --output="$REPORT_DIR/report.json" \

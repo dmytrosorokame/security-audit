@@ -71,11 +71,17 @@ Extraction modes (pick one):
   --staged                 Use staged changes (pre-commit mode)
   --diff=<file>            Parse an existing unified diff file
 
-Options:
+LLM options:
+  --provider=<p>           auto (default) | anthropic | openai
+                           auto picks based on which API key is in env
+  --model=<m>              Provider-specific alias or exact model id.
+                           anthropic: sonnet (default), haiku, opus, claude-*
+                           openai:    best=gpt-4o (default), cheap=gpt-4o-mini, o1, ...
+
+Output / filtering:
   --format=<fmt>           cli | pr | sarif | json (default: cli)
   --output=<file>          Write output to file (default: stdout)
   --fail-on=<sev>          critical | high | medium | low | info (default: critical)
-  --model=<m>              sonnet (default) | haiku | <exact-model-id>
   --context=<n>            Lines of context around hunks (default: 10)
   --include=<glob>         File include pattern (repeatable)
   --exclude=<glob>         File exclude pattern (repeatable)
@@ -84,8 +90,9 @@ Options:
   --dry-run                Build prompt but skip API call
   --help                   Show this help
 
-Environment:
-  ANTHROPIC_API_KEY        Required for live runs
+Environment (at least one required for live runs):
+  ANTHROPIC_API_KEY        Use Claude
+  OPENAI_API_KEY           Use GPT
 
 Exit codes:
   0  ok                    No findings, or all below --fail-on
@@ -95,7 +102,8 @@ Exit codes:
 Examples:
   scan-diff --against=main --format=pr --commit-sha=$GITHUB_SHA
   scan-diff --staged --fail-on=critical
-  scan-diff --diff=patch.diff --format=sarif --output=report.sarif
+  scan-diff --diff=patch.diff --provider=openai --model=cheap
+  scan-diff --against=main --provider=anthropic --model=haiku
 `);
 }
 
@@ -110,6 +118,7 @@ async function main() {
         format: { type: 'string', default: 'cli' },
         output: { type: 'string' },
         'fail-on': { type: 'string', default: 'critical' },
+        provider: { type: 'string', default: 'auto' },
         model: { type: 'string' },
         context: { type: 'string', default: '10' },
         include: { type: 'string', multiple: true, default: [] },
@@ -178,13 +187,15 @@ async function main() {
 
   // === 2. LLM analysis ===
   const model = values.model || process.env.SECURITY_AUDIT_MODEL;
+  const provider = values.provider || process.env.SECURITY_AUDIT_PROVIDER || 'auto';
   let report;
   try {
     report = await analyzeDiff(diffJson, {
+      provider,
       model,
       dryRun: values['dry-run'],
     });
-    debug('analyzed', { findings: report.findings?.length, cost: report.cost });
+    debug('analyzed', { provider: report.provider, model: report.model, findings: report.findings?.length, cost: report.cost });
   } catch (e) {
     process.stderr.write(`scan_diff: LLM analysis failed: ${e.message}\n`);
     process.exit(3);

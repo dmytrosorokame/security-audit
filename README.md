@@ -1,15 +1,17 @@
 # security-audit
 
-> **LLM-driven security review for git diffs.** Analyzes pull requests and pre-commit changesets with Claude, maps findings to OWASP Top 10 (2021) + CWE, blocks the dangerous ones.
+> **LLM-driven security review for git diffs.** Analyzes pull requests and pre-commit changesets with Claude or GPT, maps findings to OWASP Top 10 (2021) + CWE, blocks the dangerous ones.
 
 [![test](https://github.com/dmytrosorokame/security-audit/actions/workflows/test.yml/badge.svg)](https://github.com/dmytrosorokame/security-audit/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Unlike file-based SAST (Semgrep, ESLint plugin-security), security-audit reads **only the diff** — added or changed lines, with surrounding context — and asks Claude to reason about what the change actually introduces. Three properties fall out of that:
+Unlike file-based SAST (Semgrep, ESLint plugin-security), security-audit reads **only the diff** — added or changed lines, with surrounding context — and asks an LLM to reason about what the change actually introduces. Three properties fall out of that:
 
 - **No legacy noise.** Findings are attributable to *this* PR, not to whoever wrote the file three years ago.
-- **Semantic understanding.** Claude sees intent. It can tell apart "added a sanitizer call" from "added an `eval(req.body)`", even when both touch identical lines.
-- **Cheap.** A 100-line diff costs ~$0.03 on Claude Sonnet 4.5 with prompt caching. Full-repo LLM scan would be $50+.
+- **Semantic understanding.** The model sees intent. It can tell apart "added a sanitizer call" from "added an `eval(req.body)`", even when both touch identical lines.
+- **Cheap.** A 100-line diff costs ~$0.03 on Claude Sonnet 4.5 with prompt caching, or ~$0.005 on GPT-4o-mini. Full-repo LLM scan would be $50+.
+
+**Provider-agnostic**: works with **Anthropic Claude** (Sonnet/Haiku/Opus) or **OpenAI GPT** (gpt-4o, gpt-4o-mini, o-series). Pick whichever you have an API key for; the same prompts, schema, and output formats apply.
 
 ## What it catches
 
@@ -46,6 +48,8 @@ jobs:
       - uses: dmytrosorokame/security-audit@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # or:
+          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           fail-on: critical
 ```
 
@@ -79,13 +83,24 @@ SECURITY_AUDIT_SKIP=1 git commit -m '...'
 ```bash
 npm install -g security-audit
 
-export ANTHROPIC_API_KEY=sk-...
+# Pick a provider — set whichever key you have:
+export ANTHROPIC_API_KEY=sk-...      # Claude
+export OPENAI_API_KEY=sk-...         # GPT
 
-scan-diff --against=main                       # diff vs origin/main
-scan-diff --staged                             # current staged changes
-scan-diff --diff=patch.diff                    # external diff file
-scan-diff --against=main --format=sarif --output=audit.sarif
-scan-diff --staged --fail-on=high --model=haiku
+scan-diff --against=main                                          # auto-pick provider, diff vs origin/main
+scan-diff --staged                                                # staged changes (pre-commit mode)
+scan-diff --diff=patch.diff                                       # external diff file
+scan-diff --against=main --format=sarif --output=audit.sarif      # SARIF for GitHub Code Scanning
+
+# Pick provider / model explicitly:
+scan-diff --against=main --provider=anthropic --model=haiku       # cheap Claude
+scan-diff --against=main --provider=openai    --model=cheap       # cheap GPT (gpt-4o-mini)
+scan-diff --against=main --provider=openai    --model=best        # gpt-4o
+scan-diff --against=main --provider=openai    --model=o3-mini     # reasoning model
+
+# Inspect what each provider supports:
+scan-diff --help
+node node_modules/security-audit/scripts/llm_analyze.mjs --list-models
 ```
 
 ### Anthropic Skill (Claude Code)
@@ -141,8 +156,12 @@ Each finding contains:
   git diff ──▶ extract_diff.mjs ──▶ structured JSON
                                           │
                                           ▼
-                  Claude (cached system + OWASP catalog + few-shot)
-                                          │
+                                 ┌────────┴────────┐
+                                 ▼                 ▼
+                     providers/anthropic.mjs  providers/openai.mjs
+                  (cache_control + msg blocks)  (auto-cache + JSON mode)
+                                 │                 │
+                                 └────────┬────────┘
                                           ▼
                            validated, normalized findings
                                           │
@@ -151,9 +170,19 @@ Each finding contains:
                  CLI         PR        SARIF        JSON
 ```
 
-The detection layer is **purely deterministic in everything except the model call**: extraction is `git diff`; validation is schema-checked; formatting is straightforward template substitution. The LLM call uses `temperature=0` and prompt caching, so identical diffs against an unchanged catalog converge on identical findings within an hour-long cache window.
+The detection layer is **purely deterministic in everything except the model call**: extraction is `git diff`; validation is schema-checked; formatting is straightforward template substitution. The LLM call uses `temperature=0` and prompt caching, so identical diffs against an unchanged catalog converge on identical findings within the provider's cache window (5 min on Anthropic, prefix-cache on OpenAI).
 
-Cost: a 100-line diff is roughly **3–5K input tokens (cached) + ~500 output tokens** → **$0.02–$0.04 per PR** on Sonnet 4.5, **$0.005–$0.01** on Haiku. Cold-cache cost is ~$0.05.
+Provider adapters live in `scripts/providers/`. Each implements one function — `analyze({groundingBlocks, userMessage, model, apiKey})` — and the dispatcher (`scripts/llm_analyze.mjs`) picks one based on `--provider` or which env key is set. Adding a third provider (e.g. Gemini) is ~120 lines and does not touch any other part of the pipeline.
+
+**Cost per 100-line PR** (input ~12K cached + ~3K uncached + ~500 output):
+
+| Provider × Model | Cold cache | Warm cache |
+|---|---|---|
+| Anthropic Sonnet 4.5 | ~$0.05 | ~$0.02 |
+| Anthropic Haiku 4.5 | ~$0.015 | ~$0.005 |
+| OpenAI gpt-4o | ~$0.035 | ~$0.020 |
+| OpenAI gpt-4o-mini | ~$0.003 | ~$0.002 |
+| OpenAI o3-mini | ~$0.020 | ~$0.012 |
 
 ## Configuration
 
@@ -169,8 +198,13 @@ Suppress repo-wide via `.security-audit-ignore` (planned, gitignore-style globs 
 Override defaults via env:
 
 ```bash
-ANTHROPIC_API_KEY=sk-...            # required for live runs
-SECURITY_AUDIT_MODEL=sonnet         # sonnet (default) | haiku | <exact-model-id>
+# Pick at least one provider key:
+ANTHROPIC_API_KEY=sk-...
+OPENAI_API_KEY=sk-...
+
+# Optional configuration:
+SECURITY_AUDIT_PROVIDER=anthropic   # auto (default) | anthropic | openai
+SECURITY_AUDIT_MODEL=sonnet         # provider-specific alias or exact id
 SECURITY_AUDIT_FAIL_ON=critical     # critical | high | medium | low | info | none
 SECURITY_AUDIT_DEBUG=1              # verbose stderr
 ```
@@ -181,7 +215,7 @@ SECURITY_AUDIT_DEBUG=1              # verbose stderr
 - **One language ecosystem.** TS/JS/TSX/JSX + Dockerfile + docker-compose. Python/Go/Java/Rust are out of scope.
 - **LLM variance.** `temperature=0` makes runs near-deterministic but not bit-identical across model versions. Pin a model ID in CI for reproducibility.
 - **Cost scales with diff size.** A 5000-line diff is expensive. The tool truncates to `--max-files=50` by default and warns on stderr.
-- **3rd-party dependency on Anthropic.** No API key, no scan. Self-hosted alternatives are out of scope.
+- **3rd-party LLM API dependency.** No Anthropic *or* OpenAI key, no scan. Self-hosted alternatives (Ollama, vLLM, LiteLLM) are not yet supported.
 - **A09 not covered.** OWASP A09 (Logging & Monitoring Failures) is operational, not code-level — most subcategories cannot be detected by reading code alone.
 
 ## License

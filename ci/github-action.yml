@@ -30,9 +30,14 @@ jobs:
 
       - uses: dmytrosorokame/security-audit@v1
         with:
+          # ---- Provider (pick one or both; provider=auto uses whichever is set) ----
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # ---- Optional knobs ----
-          model: sonnet                      # sonnet (default) | haiku | <exact-model-id>
+          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          # provider: auto                   # auto (default) | anthropic | openai
+          # ---- Model selection (defaults to provider's recommended) ----
+          # model: sonnet                    # anthropic: sonnet|haiku|opus|<id>
+          # model: cheap                     # openai:    best|cheap|4o|mini|<id>
+          # ---- Behavior ----
           fail-on: critical                  # critical | high | medium | low | info | none
           comment-on-pr: true                # post sticky PR comment
           upload-sarif: false                # set true to publish to GitHub Code Scanning

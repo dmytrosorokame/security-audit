@@ -1,6 +1,17 @@
 # Setup guide
 
-security-audit ships with **four entry points**. Pick the ones that fit your workflow.
+security-audit ships with **four entry points** and **two LLM providers** (Anthropic Claude or OpenAI GPT). Pick whichever combination fits.
+
+## Choosing a provider
+
+Provider is selected automatically based on which env var / GitHub secret is set. To force one, pass `--provider=anthropic` or `--provider=openai` on the CLI, or the `provider` input in the GitHub Action.
+
+| Provider | Default model | Cheapest model | Cache discount | Best for |
+|---|---|---|---|---|
+| Anthropic | `claude-sonnet-4-5` (`sonnet`) | `claude-haiku-4-5` (`haiku`) | ~90% (5-min TTL) | Highest cache savings; strong JSON discipline via prompt |
+| OpenAI | `gpt-4o` (`best`) | `gpt-4o-mini` (`cheap`) | ~50% (auto prefix cache) | Cheapest cold-cache runs; strict JSON mode via `response_format` |
+
+You can use both — set both env vars and pass `--provider=anthropic` or `--provider=openai` per call.
 
 ---
 
@@ -8,11 +19,11 @@ security-audit ships with **four entry points**. Pick the ones that fit your wor
 
 **Best for**: teams using GitHub. Automatic on every PR.
 
-1. Add `ANTHROPIC_API_KEY` to your repo secrets (Settings → Secrets and variables → Actions → New repository secret).
+1. Add `ANTHROPIC_API_KEY` **and/or** `OPENAI_API_KEY` to your repo secrets (Settings → Secrets and variables → Actions → New repository secret).
 2. Copy [`ci/github-action.yml`](./github-action.yml) into your repo at `.github/workflows/security-audit.yml`.
 3. Open a PR. Within ~30s, security-audit posts a sticky comment with findings (or "no issues found").
 
-Tunable inputs are documented at the top of the workflow file.
+Tunable inputs are documented at the top of the workflow file. The action's `provider:` input defaults to `auto` (uses whichever key is present).
 
 ---
 
@@ -41,9 +52,14 @@ pre-commit install
 Configure via env:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-...              # required (or save to ~/.config/security-audit/key)
+# Pick at least one (or both):
+export ANTHROPIC_API_KEY=sk-...              # use Claude (default if both are set)
+export OPENAI_API_KEY=sk-...                 # use GPT
+
+# Optional:
+export SECURITY_AUDIT_PROVIDER=openai        # force a specific provider
 export SECURITY_AUDIT_FAIL_ON=critical       # default
-export SECURITY_AUDIT_MODEL=sonnet           # or haiku for cheap
+export SECURITY_AUDIT_MODEL=cheap            # anthropic: haiku | openai: cheap (gpt-4o-mini)
 
 # One-time bypass:
 SECURITY_AUDIT_SKIP=1 git commit -m 'wip'
@@ -66,14 +82,17 @@ const data = await fetch(internalUrl);
 npm install -g security-audit
 # or: npx security-audit ...
 
+# Pick at least one (or both):
 export ANTHROPIC_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 
-scan-diff --against=main                       # diff vs origin/main
-scan-diff --staged                             # current staged changes
-scan-diff --diff=patch.diff                    # external diff file
-scan-diff --against=main --format=pr           # markdown for a PR comment
+scan-diff --against=main                                   # diff vs origin/main (auto provider)
+scan-diff --staged                                         # current staged changes
+scan-diff --diff=patch.diff                                # external diff file
+scan-diff --against=main --format=pr                       # markdown for a PR comment
 scan-diff --against=main --format=sarif --output=audit.sarif
-scan-diff --staged --fail-on=high --model=haiku
+scan-diff --staged --fail-on=high --provider=anthropic --model=haiku
+scan-diff --staged --fail-on=high --provider=openai    --model=cheap
 ```
 
 `security-audit` is the same binary, aliased.
