@@ -40,6 +40,7 @@ import { applySuppression } from './suppression.mjs';
 import { formatReport as formatCli } from './format_cli.mjs';
 import { formatPrComment } from './format_pr_comment.mjs';
 import { formatSarif } from './format_sarif.mjs';
+import { envBool } from './providers/_common.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,7 +51,7 @@ const EXTRACT_DIFF = path.join(__dirname, 'extract_diff.mjs');
 const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4, none: Number.POSITIVE_INFINITY };
 
 function debug(...args) {
-  if (process.env.SECURITY_AUDIT_DEBUG === '1') {
+  if (envBool('SECURITY_AUDIT_DEBUG')) {
     console.error('[scan_diff]', ...args);
   }
 }
@@ -64,20 +65,25 @@ function runExtractDiff(args) {
 }
 
 /**
- * Find the git repo root from current cwd. Falls back to cwd if not in a repo.
- * Used to locate .security-audit-ignore at repo root regardless of where the
- * tool was invoked from.
+ * Find the git repo root from current cwd. Cached per process — repo root
+ * does not change within a scan, and `git rev-parse` is a 5–20ms shell-out we
+ * shouldn't pay on every batch iteration.
+ *
+ * Falls back to cwd if not in a repo.
  */
+let _repoRootCache = null;
 function findRepoRoot() {
+  if (_repoRootCache !== null) return _repoRootCache;
   try {
     const out = execFileSync('git', ['rev-parse', '--show-toplevel'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
-    return out || process.cwd();
+    _repoRootCache = out || process.cwd();
   } catch {
-    return process.cwd();
+    _repoRootCache = process.cwd();
   }
+  return _repoRootCache;
 }
 
 function printHelp() {

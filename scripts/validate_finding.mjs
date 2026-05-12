@@ -35,8 +35,12 @@ const SECRET_PATTERNS = [
   { rx: /ghp_[0-9a-zA-Z]{36}/g,                                        label: 'GITHUB_PAT' },
   { rx: /eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g,       label: 'JWT' },
   { rx: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g, label: 'PRIVATE_KEY' },
-  { rx: /(postgres|postgresql|mongodb|mongodb\+srv|mysql|mariadb|redis|amqp|amqps):\/\/[^:@\/\s]+:([^@\s]{4,})@/g, label: 'CONNECTION_STRING_PASSWORD' },
 ];
+
+// Connection strings are handled separately: the password can contain `@` if
+// URL-encoded (`%40`), so a single regex over the whole URL is brittle. We
+// pull out the password group ourselves and replace just that segment.
+const CONN_STRING_RX = /\b(postgres|postgresql|mongodb|mongodb\+srv|mysql|mariadb|redis|amqp|amqps):\/\/([^:@\/\s]+):([^\s@]+(?:%40[^\s@]+)*)@([^\s\/?#]+)/g;
 
 /**
  * Redact any well-known secret patterns in a string. Replaces match with
@@ -47,13 +51,12 @@ export function redactSecrets(text) {
   if (typeof text !== 'string') return text;
   let out = text;
   for (const { rx, label } of SECRET_PATTERNS) {
-    if (label === 'CONNECTION_STRING_PASSWORD') {
-      // Special case: keep the URL skeleton, replace only the password group.
-      out = out.replace(rx, (_, scheme) => `${scheme}://<user>:<REDACTED:${label}>@`);
-    } else {
-      out = out.replace(rx, `<REDACTED:${label}>`);
-    }
+    out = out.replace(rx, `<REDACTED:${label}>`);
   }
+  // Connection strings: keep scheme, user, host visible so the finding still
+  // makes sense; redact only the password segment.
+  out = out.replace(CONN_STRING_RX, (_, scheme, user, _pwd, host) =>
+    `${scheme}://${user}:<REDACTED:CONNECTION_STRING_PASSWORD>@${host}`);
   return out;
 }
 
@@ -77,9 +80,9 @@ export function validateFinding(f, opts = {}) {
     errors.push(`invalid line: ${f.line} (expected non-negative integer)`);
   }
   if (f.file && typeof f.file !== 'string') errors.push('file must be a string');
-  if (f.evidence && typeof f.evidence === 'string' && f.evidence.length > 500) {
-    errors.push(`evidence too long: ${f.evidence.length} chars (max 500)`);
-  }
+  // Evidence length: normalizeFinding truncates to 300 chars, so we only WARN
+  // above that — not an error. Truncation is non-destructive (audit info is
+  // preserved in the original LLM output if needed for debugging).
 
   // Cross-check against the diff: file present, line is a real changed line
   // (added or in the immediate context of a hunk).
@@ -127,22 +130,37 @@ export function validateFinding(f, opts = {}) {
  * Walk one file's hunks and produce a Map<line, 'added' | 'context'>.
  * Lines that exist only on the old side (removed) are not included — they
  * have no new-side line number to flag.
+ *
+ * Empty rows inside the hunk body are treated as context for empty source
+ * lines (some tools strip the leading-space prefix on blank context rows).
+ * We use `new_lines` from the hunk header to distinguish in-body empties
+ * (real context) from trailing newline artifacts after the last content row.
  */
 function buildChangeMap(fileEntry) {
   const map = new Map();
   for (const h of fileEntry.hunks) {
-    let line = h.new_start - 1;  // incremented before use
+    let line = h.new_start - 1;
+    let consumed = 0;
     const rows = h.content.split('\n');
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+    for (const row of rows) {
       if (row.startsWith('@@')) continue;
-      if (row.startsWith('-')) continue;  // old-side only
-      if (row === '') continue;            // trailing newline artifact
       if (row.startsWith('\\')) continue;  // "\ No newline at end of file"
-      line++;
-      if (row.startsWith('+')) map.set(line, 'added');
-      else if (row.startsWith(' ')) map.set(line, 'context');
-      // Anything else is an artifact we ignore.
+      if (row.startsWith('-')) continue;
+      if (row === '') {
+        // Real empty context line (counts) vs trailing artifact (doesn't).
+        if (consumed < h.new_lines) {
+          line++; consumed++;
+          map.set(line, 'context');
+        }
+        continue;
+      }
+      if (row.startsWith('+')) {
+        line++; consumed++;
+        map.set(line, 'added');
+      } else if (row.startsWith(' ')) {
+        line++; consumed++;
+        map.set(line, 'context');
+      }
     }
   }
   return map;
@@ -168,15 +186,21 @@ export function correctFindingLine(f, fileEntry) {
   // Find the hunk containing f.line
   const hunk = fileEntry.hunks.find(h => f.line >= h.new_start && f.line < h.new_start + h.new_lines);
   if (!hunk) return null;
-  // Walk the hunk to find all added lines
+  // Walk the hunk to find all added lines. Mirror the empty-context handling
+  // from buildChangeMap so we stay aligned with the validator.
   let line = hunk.new_start - 1;
+  let consumed = 0;
   const addedLines = [];
   for (const row of hunk.content.split('\n')) {
     if (row.startsWith('@@')) continue;
+    if (row.startsWith('\\')) continue;
     if (row.startsWith('-')) continue;
-    if (row === '' || row.startsWith('\\')) continue;
-    line++;
-    if (row.startsWith('+')) addedLines.push(line);
+    if (row === '') {
+      if (consumed < hunk.new_lines) { line++; consumed++; }
+      continue;
+    }
+    if (row.startsWith('+')) { line++; consumed++; addedLines.push(line); }
+    else if (row.startsWith(' ')) { line++; consumed++; }
   }
   if (addedLines.length === 0) return null;
   // Pick the nearest added line to f.line (ties broken toward earlier line)

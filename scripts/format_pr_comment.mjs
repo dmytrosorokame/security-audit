@@ -145,9 +145,13 @@ function footer(report) {
   return `<sub>🤖 Powered by [security-audit](https://github.com/dmytrosorokame/security-audit)</sub>${meta ? ' · ' + meta : ''}`;
 }
 
+// Conservative markdown escape — only escape chars that would actually break
+// GitHub PR comment rendering for our shape of content. Hyphens, parens, plus
+// signs, exclamation marks are fine in prose. Aggressive escaping was breaking
+// clickable URLs in cheat-sheet links.
 function escapeMd(s) {
   if (typeof s !== 'string') return s;
-  return s.replace(/([\\`*_{}\[\]()#+\-!])/g, '\\$1');
+  return s.replace(/([\\`<>])/g, '\\$1');
 }
 
 function slugify(s) {

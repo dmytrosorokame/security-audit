@@ -19,30 +19,55 @@
 /**
  * Robust JSON extraction from a model's free-form text output.
  *
- * Handles: bare JSON, JSON wrapped in ```json fences, leading/trailing whitespace.
- * Throws a descriptive error with a head snippet if parsing fails.
+ * Handles (in order):
+ *   1. bare JSON (the easy path)
+ *   2. ```json ... ``` fenced block (anywhere in the output, not just whole-string)
+ *   3. prose-wrapped JSON: find first `{` and last matching `}` and slice
+ *
+ * Throws a descriptive error with a head snippet if all strategies fail.
+ *
+ * OpenAI's `response_format: json_object` mode forces strategy 1 to work.
+ * Anthropic (no native JSON mode) sometimes produces strategy 2 or 3; this
+ * function recovers gracefully without a re-prompt.
  */
 export function extractJsonFromText(text, context = 'LLM') {
   const trimmed = (text || '').trim();
   if (!trimmed) {
     throw new Error(`${context} returned empty response`);
   }
-  const fence = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```\s*$/);
-  const candidate = fence ? fence[1] : trimmed;
-  try {
-    return JSON.parse(candidate);
-  } catch (e) {
-    const head = candidate.slice(0, 800);
-    throw new Error(`${context} did not return valid JSON.\nParser error: ${e.message}\nFirst 800 chars:\n${head}`);
+
+  // Strategy 1: bare JSON
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try { return JSON.parse(trimmed); } catch { /* fall through */ }
   }
+
+  // Strategy 2: ```json fence (anywhere, not anchored)
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fence) {
+    try { return JSON.parse(fence[1].trim()); } catch { /* fall through */ }
+  }
+
+  // Strategy 3: prose-wrapped — slice from first `{` to last `}` and try
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const slice = trimmed.slice(firstBrace, lastBrace + 1);
+    try { return JSON.parse(slice); } catch { /* fall through */ }
+  }
+
+  // All strategies exhausted — produce an actionable error.
+  const head = trimmed.slice(0, 800);
+  throw new Error(`${context} did not return parseable JSON. First 800 chars:\n${head}`);
 }
 
 /**
  * Round a USD amount to 6 decimals (micro-cent precision) — good enough for
- * benchmark telemetry and small enough to fit in JSON cleanly.
+ * benchmark telemetry and small enough to fit in JSON cleanly. Returns null
+ * for null/undefined input so cost can be reported as "unknown" cleanly.
  */
 export function roundCost(usd) {
-  return Number(usd.toFixed(6));
+  if (usd == null || Number.isNaN(usd)) return null;
+  return Number(Number(usd).toFixed(6));
 }
 
 /**
@@ -93,4 +118,44 @@ export class ProviderError extends Error {
     this.kind = kind;
     this.cause = cause;
   }
+}
+
+/**
+ * Accept common "truthy" forms of an env var: 1 / true / yes / on / y / t
+ * (case-insensitive). Anything else — including unset — is false.
+ *
+ * Used for boolean env switches like SECURITY_AUDIT_DEBUG. Without this users
+ * setting SECURITY_AUDIT_DEBUG=true silently get the false branch.
+ */
+export function envBool(name) {
+  const v = (process.env[name] || '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on' || v === 'y' || v === 't';
+}
+
+/**
+ * Exponential-backoff retry helper for transient API failures.
+ *
+ * `shouldRetry(err)` decides whether to retry on a given error. Defaults
+ * to true (retry everything once); providers pass a predicate that returns
+ * true only for 429 / 5xx / network errors.
+ *
+ * Backoff schedule (with jitter): 500ms, 1500ms, 4500ms ± 30%. The 3-attempt
+ * default fits inside a typical 30s CI step budget while still riding out a
+ * single 429 burst.
+ */
+export async function withRetry(fn, { attempts = 3, baseDelayMs = 500, shouldRetry = () => true, onRetry } = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i === attempts - 1 || !shouldRetry(err)) throw err;
+      const exp = baseDelayMs * Math.pow(3, i);
+      const jitter = exp * (0.7 + Math.random() * 0.6);  // ±30%
+      if (onRetry) onRetry(err, i + 1, Math.round(jitter));
+      await new Promise(r => setTimeout(r, jitter));
+    }
+  }
+  throw lastErr;
 }

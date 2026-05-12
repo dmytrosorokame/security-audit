@@ -24,7 +24,7 @@
  */
 
 import OpenAI from 'openai';
-import { extractJsonFromText, roundCost, ProviderError } from './_common.mjs';
+import { extractJsonFromText, roundCost, ProviderError, withRetry } from './_common.mjs';
 
 export const NAME = 'openai';
 export const ENV_KEY = 'OPENAI_API_KEY';
@@ -112,7 +112,15 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
   const client = new OpenAI({ apiKey: key });
   const startedAt = Date.now();
 
-  // o-series reasoning models don't support temperature and use max_completion_tokens
+  // o-series reasoning models have different parameter requirements:
+  //   - no `temperature` (always 1 internally)
+  //   - `max_completion_tokens` instead of `max_tokens`
+  //   - `response_format: json_object` support varies — o1-mini historically
+  //     did not support it. Safer to omit and rely on prompt discipline +
+  //     the post-hoc JSON extractor in _common.mjs (it now handles prose
+  //     prefix/suffix and fenced blocks too).
+  // For non-reasoning models (gpt-4o family) we use json_object mode which
+  // guarantees valid JSON output via OpenAI's grammar-constrained decoding.
   const isReasoning = /^o\d/.test(resolvedModel);
 
   const requestBody = {
@@ -121,15 +129,30 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
       { role: 'system', content: buildSystemMessage(groundingBlocks) },
       { role: 'user',   content: userMessage },
     ],
-    response_format: { type: 'json_object' },
     ...(isReasoning
       ? { max_completion_tokens: 8000 }
-      : { temperature: 0, max_tokens: 8000 }),
+      : { temperature: 0, max_tokens: 8000, response_format: { type: 'json_object' } }),
   };
 
   let response;
   try {
-    response = await client.chat.completions.create(requestBody);
+    response = await withRetry(
+      () => client.chat.completions.create(requestBody),
+      {
+        attempts: 3,
+        shouldRetry: (e) => {
+          // Retry transient: 429 (rate limit) and 5xx. Auth/bad-request errors
+          // are permanent — fail fast.
+          const s = e?.status;
+          return s === 429 || (s >= 500 && s < 600);
+        },
+        onRetry: (err, attempt, delayMs) => {
+          if (process.stderr.isTTY) {
+            process.stderr.write(`[openai] transient ${err?.status || 'error'} (attempt ${attempt}/3) — retrying in ${delayMs}ms\n`);
+          }
+        },
+      },
+    );
   } catch (err) {
     const status = err?.status;
     if (status === 401) throw new ProviderError(NAME, 'auth', 'API key rejected', err);

@@ -67,18 +67,22 @@ function parseRuleIdsFromBody(body) {
 function parseDirectivesFromHunk(hunk) {
   const directives = new Map();
   const lines = hunk.content.split('\n');
-  // Track new-side line numbers as we walk the hunk. Only `+` (added) and
-  // ` ` (context) lines advance the counter; `-` and metadata rows don't.
+  // Track new-side line numbers. Use `new_lines` from the hunk header to
+  // distinguish real empty context lines (count) from trailing newline
+  // artifacts after the last content row (don't count). This matches the
+  // validator's buildChangeMap so both agree on which line a directive sits.
   let newLine = hunk.new_start - 1;
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (raw === '') continue;             // trailing newline artifact from split
+  let consumed = 0;
+  for (const raw of lines) {
     if (raw.startsWith('@@')) continue;
-    if (raw.startsWith('\\')) continue;   // "\ No newline at end of file"
+    if (raw.startsWith('\\')) continue;
     if (raw.startsWith('-')) continue;
-    // Only proceed for content rows; advance the counter only for those.
+    if (raw === '') {
+      if (consumed < hunk.new_lines) { newLine++; consumed++; }
+      continue;
+    }
     if (!raw.startsWith('+') && !raw.startsWith(' ')) continue;
-    newLine++;
+    newLine++; consumed++;
     const text = raw.slice(1);
     const m = text.match(DIRECTIVE_RX);
     if (!m) continue;

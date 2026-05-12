@@ -23,7 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import { buildGroundingBlocks, buildUserMessage, ProviderError } from './providers/_common.mjs';
+import { buildGroundingBlocks, buildUserMessage, ProviderError, envBool } from './providers/_common.mjs';
 import * as anthropic from './providers/anthropic.mjs';
 import * as openai from './providers/openai.mjs';
 
@@ -40,13 +40,19 @@ const PROVIDERS = {
   openai,
 };
 
+// Grounding docs are stable across calls within a process (they're tracked
+// files in the install dir). Cache at module load so batch invocations don't
+// re-read 50K+ chars of markdown for every single PR.
+let _groundingCache = null;
 function loadGroundingDocs() {
-  return {
+  if (_groundingCache) return _groundingCache;
+  _groundingCache = {
     system: fs.readFileSync(path.join(SKILL_ROOT, 'prompts/system.md'), 'utf8'),
     fewShot: fs.readFileSync(path.join(SKILL_ROOT, 'prompts/few_shot.md'), 'utf8'),
     owaspRules: fs.readFileSync(path.join(SKILL_ROOT, 'references/owasp-rules.md'), 'utf8'),
     owaspMapping: fs.readFileSync(path.join(SKILL_ROOT, 'references/owasp-mapping.md'), 'utf8'),
   };
+  return _groundingCache;
 }
 
 /**
@@ -80,7 +86,7 @@ export function pickProvider(explicit) {
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (hasAnthropic && hasOpenAI) {
     // Quiet by default during dry-runs / tests; visible during real CLI use.
-    if (process.stderr.isTTY || process.env.SECURITY_AUDIT_DEBUG === '1') {
+    if (process.stderr.isTTY || envBool('SECURITY_AUDIT_DEBUG')) {
       process.stderr.write(
         "[security-audit] Both ANTHROPIC_API_KEY and OPENAI_API_KEY are set — using anthropic by default " +
         "(cheaper with prompt caching). Pass --provider=openai or set SECURITY_AUDIT_PROVIDER=openai to override.\n"

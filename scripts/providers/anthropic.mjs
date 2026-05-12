@@ -17,7 +17,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { extractJsonFromText, roundCost, ProviderError } from './_common.mjs';
+import { extractJsonFromText, roundCost, ProviderError, withRetry } from './_common.mjs';
 
 export const NAME = 'anthropic';
 export const ENV_KEY = 'ANTHROPIC_API_KEY';
@@ -93,13 +93,30 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
 
   let response;
   try {
-    response = await client.messages.create({
-      model: resolvedModel,
-      max_tokens: 8000,
-      temperature: 0,
-      system: buildSystem(groundingBlocks),
-      messages: [{ role: 'user', content: userMessage }],
-    });
+    response = await withRetry(
+      () => client.messages.create({
+        model: resolvedModel,
+        max_tokens: 8000,
+        temperature: 0,
+        system: buildSystem(groundingBlocks),
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+      {
+        attempts: 3,
+        shouldRetry: (e) => {
+          // RateLimitError + 5xx are transient; auth/bad_request are permanent.
+          if (e instanceof Anthropic.RateLimitError) return true;
+          const s = e?.status;
+          return s >= 500 && s < 600;
+        },
+        onRetry: (err, attempt, delayMs) => {
+          if (process.stderr.isTTY) {
+            const kind = err instanceof Anthropic.RateLimitError ? 'rate_limit' : `${err?.status || 'error'}`;
+            process.stderr.write(`[anthropic] transient ${kind} (attempt ${attempt}/3) — retrying in ${delayMs}ms\n`);
+          }
+        },
+      },
+    );
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
       throw new ProviderError(NAME, 'rate_limit', err.message, err);

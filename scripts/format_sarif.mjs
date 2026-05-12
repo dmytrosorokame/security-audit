@@ -24,16 +24,19 @@ const SEVERITY_TO_SARIF = {
 function formatSarif(report) {
   const findings = report.findings || [];
 
-  // Build unique rules array from findings
+  // Build unique rules array from findings. Per SARIF spec, `name` should be
+  // a stable identifier (we use the raw rule_id like "R-02"). The human
+  // title goes into `shortDescription.text` which GitHub Code Scanning UI
+  // displays next to the rule name.
   const rulesMap = new Map();
   for (const f of findings) {
     const id = f.rule_id;
     if (!rulesMap.has(id)) {
       rulesMap.set(id, {
         id,
-        name: titleCase(id),
+        name: id,                      // keep "R-02" raw, not "R 02"
         shortDescription: {
-          text: f.title || titleCase(id),
+          text: f.title || id,
         },
         fullDescription: {
           text: `${id} maps to ${f.owasp_id} / ${f.cwe_id}.`,
@@ -104,10 +107,6 @@ function formatSarif(report) {
       },
     ],
   };
-}
-
-function titleCase(s) {
-  return (s || '').replace(/^./, c => c.toUpperCase()).replace(/[-_]/g, ' ');
 }
 
 function cvssScoreFromSeverity(sev) {
