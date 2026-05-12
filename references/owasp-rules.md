@@ -199,11 +199,11 @@ window.localStorage.setItem('api_key', user.apiKey);
 
 API keys, OAuth client secrets, JWT signing keys, AWS credentials embedded in client-side or shared source. Even in private repos they leak via build artifacts, git history, error logs. Recognizable formats: `AKIA…` (AWS), `AIza…` (Google), `sk_live_…`/`pk_live_…` (Stripe), `xox[abp]-…` (Slack), `ghp_…` (GitHub PAT), `eyJ…` (JWT), `-----BEGIN … PRIVATE KEY-----`.
 
-**Vulnerable**:
+**Vulnerable** (key prefixes deliberately broken below — `sk_l1ve_`, `AK1A` — so secret scanners don't flag this catalog file; real findings would contain unbroken prefixes):
 ```ts
-const stripe = new Stripe('sk_live_51Hxxxxxxxxxxxxxxxxxxxxxx');
-const config = { awsKey: 'AKIAIOSFODNN7EXAMPLE', awsSecret: 'wJalrXUtnFEMI/...' };
-const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...';
+const stripe = new Stripe('sk_l1ve_EXAMPLE_NOT_A_REAL_KEY_xxxxxxxxxxxxxxx');
+const config = { awsKey: 'AK1AIOSFODNN7EXAMPLE', awsSecret: 'wJalrXUtnFEMI/...' };
+const TOKEN = 'eyJhbGc.PLACEHOLDER.NotARealJWT';
 ```
 
 **Safe**:
@@ -884,9 +884,9 @@ FROM node@sha256:a8e...
 
 `ENV API_KEY=sk_live_...`, `ARG DB_PASSWORD=secret123`. These bake the secret into image layers — anyone with image access (registry pull, docker history) can extract them.
 
-**Vulnerable**:
+**Vulnerable** (placeholders below are deliberately broken so secret scanners don't flag this file; real findings would have actual key material here):
 ```dockerfile
-ENV STRIPE_KEY=sk_live_51Hxxxxxxxxxxxxxxxxxxxxxx
+ENV STRIPE_KEY=sk_l1ve_EXAMPLE_NOT_A_REAL_KEY_xxxxxxxxxxxxxxx
 ARG DB_PASSWORD=Adm1nP@ss
 ENV JWT_SECRET=mysecret123
 ```
