@@ -24,10 +24,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Directive may appear up to this many lines above the flagged line. Most
-// suppressions go directly above the code (offset 1), but tolerating 1–3 lines
-// covers blank lines and ESLint-style header comments.
-const LOOKBACK = 3;
+// Directive may appear on the SAME line as the flagged construct (offset 0,
+// trailing-comment style: `const x = req.body; // security-audit-ignore: R-02`)
+// or up to LOOKBACK lines above (offset 1–3). 3 lines is enough to span blank
+// lines and ESLint-style header comments while staying tight.
+const MAX_LOOKBACK = 3;
 
 // Comment styles we recognize:
 //   //   JS/TS line comment              // security-audit-ignore: R-02
@@ -66,16 +67,19 @@ function parseRuleIdsFromBody(body) {
 function parseDirectivesFromHunk(hunk) {
   const directives = new Map();
   const lines = hunk.content.split('\n');
-  // Skip the @@-header line; track new-side line numbers as we go.
-  let newLine = hunk.new_start - 1;  // -1 because we increment before use
+  // Track new-side line numbers as we walk the hunk. Only `+` (added) and
+  // ` ` (context) lines advance the counter; `-` and metadata rows don't.
+  let newLine = hunk.new_start - 1;
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
+    if (raw === '') continue;             // trailing newline artifact from split
     if (raw.startsWith('@@')) continue;
-    if (raw.startsWith('-')) continue;            // old-side only, no new-line increment
-    // '+' (added) and ' ' (context) lines both advance new-side counter.
-    newLine++;
+    if (raw.startsWith('\\')) continue;   // "\ No newline at end of file"
+    if (raw.startsWith('-')) continue;
+    // Only proceed for content rows; advance the counter only for those.
     if (!raw.startsWith('+') && !raw.startsWith(' ')) continue;
-    const text = raw.slice(1);  // strip leading '+' or ' '
+    newLine++;
+    const text = raw.slice(1);
     const m = text.match(DIRECTIVE_RX);
     if (!m) continue;
     const ruleIds = parseRuleIdsFromBody(m[1]);
@@ -121,7 +125,9 @@ export function applyInlineDirectives(findings, directiveIndex) {
     const fileDirs = directiveIndex.get(f.file);
     let matched = null;
     if (fileDirs) {
-      for (let offset = 1; offset <= LOOKBACK; offset++) {
+      // offset 0: same-line trailing directive (`code; // security-audit-ignore: R-02`)
+      // offset 1..MAX_LOOKBACK: directive on a line above the flagged construct
+      for (let offset = 0; offset <= MAX_LOOKBACK; offset++) {
         const candidate = fileDirs.get(f.line - offset);
         if (candidate && ruleMatches(candidate, f.rule_id)) {
           matched = { line: f.line - offset, rules: candidate, offset };

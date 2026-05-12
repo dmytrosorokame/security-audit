@@ -35,7 +35,7 @@ import { execFileSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 
 import { analyzeDiff } from './llm_analyze.mjs';
-import { validateReport, validateFinding, normalizeFinding } from './validate_finding.mjs';
+import { validateReport, validateFinding, normalizeFinding, correctFindingLine } from './validate_finding.mjs';
 import { applySuppression } from './suppression.mjs';
 import { formatReport as formatCli } from './format_cli.mjs';
 import { formatPrComment } from './format_pr_comment.mjs';
@@ -230,17 +230,42 @@ async function main() {
   // === 3. Validate + normalize ===
   report.diff_stats = diffJson.stats;
 
-  // 3a. Drop hallucinated findings — file/line that don't exist in the diff.
-  //     Schema-malformed findings still pass through with warnings (LLMs
-  //     occasionally misformat severity casing, etc.), but anything we can't
-  //     anchor to a real diff line is removed outright.
+  // 3a. Anti-hallucination pass:
+  //     - Wrong file or line outside any hunk → hard-drop (real fabrication).
+  //     - Evidence string not in diff content → hard-drop (LLM paraphrased
+  //       and we can't trust the attribution).
+  //     - Line points at a context-only row (LLM picked the wrong line within
+  //       the right hunk) → auto-fix to the nearest `+` line in the same hunk.
+  //       Live testing showed this is a common LLM failure mode that doesn't
+  //       warrant dropping the finding.
   const sane = [];
   const hallucinated = [];
-  for (const f of report.findings || []) {
-    const r = validateFinding(f, { diff: diffJson });
-    const anchorErr = r.errors.find(e => e.startsWith("file '") || e.startsWith('line '));
-    if (anchorErr) {
-      hallucinated.push({ ...f, hallucination_reason: anchorErr });
+  const lineCorrected = [];
+  for (let f of report.findings || []) {
+    let r = validateFinding(f, { diff: diffJson });
+
+    // Try to auto-correct line if the only anchor error is "context-only"
+    const contextOnly = r.errors.find(e => e.includes('is context-only'));
+    if (contextOnly) {
+      const fileEntry = diffJson.files.find(x => x.path === f.file);
+      const corrected = correctFindingLine(f, fileEntry);
+      if (corrected && corrected !== f.line) {
+        f = { ...f, line: corrected, line_corrected_from: r.errors.find(() => true) ? f.line : undefined };
+        // Re-validate after fix
+        r = validateFinding(f, { diff: diffJson });
+        lineCorrected.push(f.file + ':' + f.line);
+      }
+    }
+
+    // Hard-drop conditions: file missing, line outside hunks, or evidence
+    // string can't be found in the diff (LLM fabricated the quote).
+    const hardDrop = r.errors.find(e =>
+      e.startsWith("file '") ||
+      (e.startsWith('line ') && e.includes('not in any hunk')) ||
+      e.startsWith('evidence not found')
+    );
+    if (hardDrop) {
+      hallucinated.push({ ...f, hallucination_reason: hardDrop });
     } else {
       sane.push(f);
     }
@@ -249,6 +274,10 @@ async function main() {
   if (hallucinated.length > 0) {
     report.hallucinated_findings = hallucinated;
     debug(`dropped ${hallucinated.length} hallucinated findings`);
+  }
+  if (lineCorrected.length > 0) {
+    report.line_corrections = lineCorrected.length;
+    debug(`auto-corrected line numbers on ${lineCorrected.length} findings`);
   }
 
   // 3b. Full schema validation — surface the rest as warnings.

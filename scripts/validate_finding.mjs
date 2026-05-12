@@ -19,6 +19,44 @@ const RULE_ID_RX = /^(R-\d{2}|B-\d{2}|D-\d{2}|NEW_PATTERN)$/;
 const OWASP_RX = /^A\d{2}:\d{4}$/;
 const CWE_RX = /^CWE-\d+$|^CWE-UNKNOWN$/;
 
+// Secret patterns we redact from `evidence` before the finding leaves the
+// pipeline. When R-07 fires on a hardcoded API key, the LLM legitimately
+// includes the key string as evidence — but PR comments, SARIF reports, and
+// logs would then leak the secret. We replace the matched substring with the
+// label of the secret family (e.g. AWS_ACCESS_KEY) so downstream consumers
+// still know *what kind* of secret was detected without seeing the value.
+const SECRET_PATTERNS = [
+  { rx: /AKIA[0-9A-Z]{16}/g,                                           label: 'AWS_ACCESS_KEY' },
+  { rx: /AIza[0-9A-Za-z\-_]{35}/g,                                     label: 'GOOGLE_API_KEY' },
+  { rx: /sk_live_[0-9a-zA-Z]{20,}/g,                                   label: 'STRIPE_SECRET' },
+  { rx: /pk_live_[0-9a-zA-Z]{20,}/g,                                   label: 'STRIPE_PUBLISHABLE' },
+  { rx: /sk-(?:proj-)?[A-Za-z0-9_\-]{40,}/g,                           label: 'OPENAI_KEY' },
+  { rx: /xox[abposr]-[0-9a-zA-Z\-]{10,}/g,                             label: 'SLACK_TOKEN' },
+  { rx: /ghp_[0-9a-zA-Z]{36}/g,                                        label: 'GITHUB_PAT' },
+  { rx: /eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g,       label: 'JWT' },
+  { rx: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g, label: 'PRIVATE_KEY' },
+  { rx: /(postgres|postgresql|mongodb|mongodb\+srv|mysql|mariadb|redis|amqp|amqps):\/\/[^:@\/\s]+:([^@\s]{4,})@/g, label: 'CONNECTION_STRING_PASSWORD' },
+];
+
+/**
+ * Redact any well-known secret patterns in a string. Replaces match with
+ * `<REDACTED:LABEL>`. Used on `evidence` so we don't leak the very thing we
+ * flagged through PR comments / SARIF / stdout.
+ */
+export function redactSecrets(text) {
+  if (typeof text !== 'string') return text;
+  let out = text;
+  for (const { rx, label } of SECRET_PATTERNS) {
+    if (label === 'CONNECTION_STRING_PASSWORD') {
+      // Special case: keep the URL skeleton, replace only the password group.
+      out = out.replace(rx, (_, scheme) => `${scheme}://<user>:<REDACTED:${label}>@`);
+    } else {
+      out = out.replace(rx, `<REDACTED:${label}>`);
+    }
+  }
+  return out;
+}
+
 export function validateFinding(f, opts = {}) {
   const errors = [];
   if (!f || typeof f !== 'object') return { valid: false, errors: ['finding is not an object'] };
@@ -43,18 +81,41 @@ export function validateFinding(f, opts = {}) {
     errors.push(`evidence too long: ${f.evidence.length} chars (max 500)`);
   }
 
-  // Optional file presence cross-check
+  // Cross-check against the diff: file present, line is a real changed line
+  // (added or in the immediate context of a hunk).
   if (opts.diff && f.file && f.line && opts.diff.files) {
     const fileEntry = opts.diff.files.find(x => x.path === f.file);
     if (!fileEntry) {
       errors.push(`file '${f.file}' not present in the diff`);
     } else {
-      // Verify line falls within at least one hunk of the new side
-      const inHunk = fileEntry.hunks.some(h => {
-        return f.line >= h.new_start && f.line < h.new_start + h.new_lines;
-      });
-      if (!inHunk) {
+      const changeMap = buildChangeMap(fileEntry);
+      const status = changeMap.get(f.line);
+      if (!status) {
         errors.push(`line ${f.line} not in any hunk of ${f.file}`);
+      } else if (status === 'context' && !opts.allowContextLines) {
+        // Findings should point at an added (`+`) line, not surrounding
+        // context. The diff is what *changed*; flagging an unchanged context
+        // line means the LLM mis-attributed the location.
+        errors.push(`line ${f.line} is context-only (not an added line) in ${f.file}`);
+      }
+    }
+  }
+
+  // Evidence should be a substring of the diff content for the file —
+  // anti-hallucination check for the evidence quote itself.
+  if (opts.diff && f.file && typeof f.evidence === 'string' && f.evidence.length >= 8) {
+    const fileEntry = opts.diff.files.find(x => x.path === f.file);
+    if (fileEntry) {
+      const allContent = fileEntry.hunks.map(h => h.content).join('\n');
+      // Normalize whitespace on both sides — LLM tends to collapse whitespace.
+      const haystack = normalizeForEvidenceMatch(allContent);
+      const needle = normalizeForEvidenceMatch(f.evidence);
+      // Truncate needle to first 80 chars to tolerate the LLM adding ellipsis
+      // or trailing commentary; require a substantial overlap so we don't
+      // accept trivially-matching short tokens.
+      const probe = needle.slice(0, Math.min(needle.length, 80));
+      if (probe.length >= 8 && !haystack.includes(probe)) {
+        errors.push(`evidence not found in diff content for ${f.file} (LLM may have paraphrased or hallucinated)`);
       }
     }
   }
@@ -62,12 +123,87 @@ export function validateFinding(f, opts = {}) {
   return { valid: errors.length === 0, errors };
 }
 
+/**
+ * Walk one file's hunks and produce a Map<line, 'added' | 'context'>.
+ * Lines that exist only on the old side (removed) are not included — they
+ * have no new-side line number to flag.
+ */
+function buildChangeMap(fileEntry) {
+  const map = new Map();
+  for (const h of fileEntry.hunks) {
+    let line = h.new_start - 1;  // incremented before use
+    const rows = h.content.split('\n');
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.startsWith('@@')) continue;
+      if (row.startsWith('-')) continue;  // old-side only
+      if (row === '') continue;            // trailing newline artifact
+      if (row.startsWith('\\')) continue;  // "\ No newline at end of file"
+      line++;
+      if (row.startsWith('+')) map.set(line, 'added');
+      else if (row.startsWith(' ')) map.set(line, 'context');
+      // Anything else is an artifact we ignore.
+    }
+  }
+  return map;
+}
+
+/** Normalize whitespace for evidence substring matching. */
+function normalizeForEvidenceMatch(s) {
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * If `f.line` is inside a hunk but points at a context line (not an added
+ * line), try to correct it to the nearest added line within the same hunk.
+ * Returns the corrected line, or null if no in-hunk added line is found.
+ *
+ * Used by scan_diff to recover findings where the LLM nailed the file, hunk,
+ * and evidence but mis-numbered the precise line. Live testing showed this is
+ * a common LLM failure mode — they sometimes pick the start of the hunk or
+ * the function signature line.
+ */
+export function correctFindingLine(f, fileEntry) {
+  if (!f || !fileEntry) return null;
+  // Find the hunk containing f.line
+  const hunk = fileEntry.hunks.find(h => f.line >= h.new_start && f.line < h.new_start + h.new_lines);
+  if (!hunk) return null;
+  // Walk the hunk to find all added lines
+  let line = hunk.new_start - 1;
+  const addedLines = [];
+  for (const row of hunk.content.split('\n')) {
+    if (row.startsWith('@@')) continue;
+    if (row.startsWith('-')) continue;
+    if (row === '' || row.startsWith('\\')) continue;
+    line++;
+    if (row.startsWith('+')) addedLines.push(line);
+  }
+  if (addedLines.length === 0) return null;
+  // Pick the nearest added line to f.line (ties broken toward earlier line)
+  let best = addedLines[0];
+  let bestDist = Math.abs(best - f.line);
+  for (const al of addedLines) {
+    const d = Math.abs(al - f.line);
+    if (d < bestDist) { best = al; bestDist = d; }
+  }
+  return best;
+}
+
 export function normalizeFinding(f) {
   const out = { ...f };
-  // Trim evidence whitespace and collapse to single-line if too noisy
   if (typeof out.evidence === 'string') {
-    out.evidence = out.evidence.trim();
+    // Order: trim → redact → truncate. Redaction first means a 280-char string
+    // with an API key in the middle still gets the secret replaced even after
+    // truncation pushes the boundary; truncating first could cut the key in
+    // half and leak fragments.
+    out.evidence = redactSecrets(out.evidence.trim());
     if (out.evidence.length > 300) out.evidence = out.evidence.slice(0, 297) + '...';
+  }
+  if (typeof out.rationale === 'string') {
+    out.rationale = redactSecrets(out.rationale);
+  }
+  if (typeof out.remediation === 'string') {
+    out.remediation = redactSecrets(out.remediation);
   }
   // Compute risk_score if absent
   if (out.risk_score === undefined || out.risk_score === null) {
