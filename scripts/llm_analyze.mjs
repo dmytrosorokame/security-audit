@@ -51,12 +51,22 @@ function loadGroundingDocs() {
 
 /**
  * Resolve which provider to use. Order:
- *   1. Explicit --provider=X (or options.provider)
- *   2. If any provider's API key is in env, use that one
- *   3. Throw with a helpful message
+ *   1. Explicit `--provider=X` (or options.provider, or SECURITY_AUDIT_PROVIDER env)
+ *   2. Auto-detect from env keys:
+ *        - if BOTH ANTHROPIC_API_KEY and OPENAI_API_KEY are set, prefer Anthropic
+ *          (rationale below) and emit a one-line stderr notice so the choice is
+ *          visible. Set --provider= explicitly to override permanently.
+ *        - otherwise use whichever single key is set.
+ *   3. Throw with a helpful message if no key is set.
  *
- * When multiple keys are set without explicit --provider, prefer anthropic
- * (it's the original primary integration).
+ * Why Anthropic wins ties:
+ *   - Anthropic's explicit `cache_control` markers give ~90% cache-read discount,
+ *     versus OpenAI's auto-prefix caching at ~50%. For our grounding-heavy
+ *     workload (~12K stable tokens per call) that is a 2× cost difference once
+ *     the cache is warm.
+ *   - This is a heuristic, not a quality claim. Either provider produces valid
+ *     output. Users who prefer OpenAI should pin --provider=openai (or
+ *     SECURITY_AUDIT_PROVIDER=openai) to avoid the stderr notice.
  */
 export function pickProvider(explicit) {
   if (explicit && explicit !== 'auto') {
@@ -66,12 +76,24 @@ export function pickProvider(explicit) {
     }
     return p;
   }
-  if (process.env.ANTHROPIC_API_KEY) return anthropic;
-  if (process.env.OPENAI_API_KEY) return openai;
+  const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  if (hasAnthropic && hasOpenAI) {
+    // Quiet by default during dry-runs / tests; visible during real CLI use.
+    if (process.stderr.isTTY || process.env.SECURITY_AUDIT_DEBUG === '1') {
+      process.stderr.write(
+        "[security-audit] Both ANTHROPIC_API_KEY and OPENAI_API_KEY are set — using anthropic by default " +
+        "(cheaper with prompt caching). Pass --provider=openai or set SECURITY_AUDIT_PROVIDER=openai to override.\n"
+      );
+    }
+    return anthropic;
+  }
+  if (hasAnthropic) return anthropic;
+  if (hasOpenAI) return openai;
   throw new Error(
     'No provider API key found in environment. Set one of:\n' +
-    '  ANTHROPIC_API_KEY  (use Claude — best for prompt caching)\n' +
-    '  OPENAI_API_KEY     (use GPT — also supported)\n' +
+    '  ANTHROPIC_API_KEY  (use Claude; preferred when both are set, see pickProvider docs)\n' +
+    '  OPENAI_API_KEY     (use GPT)\n' +
     'Or pass --dry-run to skip the API call.'
   );
 }

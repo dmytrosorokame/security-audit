@@ -1,550 +1,1074 @@
-# Vulnerability Pattern Catalog — LLM Grounding for Diff Review
+# Vulnerability Pattern Catalog — LLM Grounding
 
-This catalog describes the **35 vulnerability patterns** the LLM agent looks for when reviewing diffs. Each pattern has: OWASP Top 10 (2021) category, CWE ID, severity, structural signature (how the pattern looks in code — useful as a recognition hint), false-positive guards, and remediation guidance with OWASP Cheat Sheet links.
+This catalog describes the **34 vulnerability patterns** the LLM agent looks for when reviewing diffs. Each entry has: OWASP Top 10 (2021) category, CWE ID, severity, a plain-English description of what the pattern looks like, vulnerable and safe code examples, confidence guidance, a remediation summary, and a reference URL.
 
-**How the LLM uses this**: when analyzing a diff, the agent grounds its reasoning in this catalog. If a diff matches a `rule_id` pattern, the finding inherits the canonical `owasp_id`, `cwe_id`, `severity`. If a pattern is recognized but doesn't fit any catalog entry, the agent uses `rule_id: NEW_PATTERN` and flags for human review.
+## How the LLM uses this
 
-**Coverage**: 12 frontend (`R-XX`), 15 backend (`B-XX`), 8 container (`D-XX`) — 35 total. Each rule has structural signatures kept for LLM recognition.
+When reviewing a diff, the agent grounds its reasoning in this catalog. The decision flow per finding is:
 
-## FE rules (R-XX)
+1. **Match a pattern below?** Use that `rule_id` (e.g. `R-02`) and inherit its canonical `owasp_id`, `cwe_id`, and `severity`.
+2. **Real vulnerability but no catalog match?** Use `rule_id: NEW_PATTERN`, fill in `owasp_id` and `cwe_id` yourself, set `verdict: NEEDS_HUMAN` unless the pattern is unambiguous.
+3. **Pattern is present but the diff actually fixes / sanitizes it?** Don't flag (or flag with `verdict: FALSE_POSITIVE` if the construct is novel and could regress).
 
-| ID | Назва | OWASP | CWE | Severity |
-|----|-------|-------|-----|----------|
-| R-01 | DOM XSS via `dangerouslySetInnerHTML` без санітизації | A03:2021 | CWE-79 | high |
-| R-02 | DOM XSS via `innerHTML`/`outerHTML`/`document.write` із зовнішнім input | A03:2021 | CWE-79 | high |
-| R-03 | `<a target="_blank">` без `rel="noopener noreferrer"` | A05:2021 | CWE-1022 | medium |
-| R-04 | `javascript:` URL у `href`/`src` | A03:2021 | CWE-79 | high |
-| R-05 | Prototype pollution patterns (`Object.assign({}, untrusted)`, рекурсивний merge) | A08:2021 | CWE-1321 | high |
-| R-06 | Зберігання токенів/секретів у `localStorage`/`sessionStorage` | A02:2021 | CWE-922 | high |
-| R-07 | Hard-coded secrets/API keys у клієнтському коді | A07:2021 | CWE-798 | critical |
-| R-08 | Open redirect через `window.location = userInput` | A01:2021 | CWE-601 | high |
-| R-09 | `postMessage` без перевірки `origin` | A04:2021 | CWE-346 | high |
-| R-10 | Відсутній CSP / SRI у HTML/Vite-конфігах | A05:2021 | CWE-693 | medium |
-| R-11 | CORS misconfig (`Access-Control-Allow-Origin: *` з credentials) у клієнтських wrappers | A05:2021 | CWE-942 | high |
-| R-12 | Залежності з відомими CVE (через `pnpm audit`) | A06:2021 | CWE-1395 | varies |
+Code examples are illustrative — they show the *shape* of the pattern, not exhaustive variations. The LLM is expected to recognize the pattern across syntactic variants (e.g. arrow functions, async, destructuring).
 
-## BE rules (B-XX)
+## Coverage
 
-| ID | Назва | OWASP | CWE | Severity |
-|----|-------|-------|-----|----------|
-| B-01 | SQL injection через raw query з template literal/concat (Sequelize, Knex, pg/mysql) | A03:2021 | CWE-89 | critical |
-| B-02 | Command injection через `child_process` з user input | A03:2021 | CWE-78 | critical |
-| B-03 | NoSQL injection (Mongoose `$where`, raw `req.body` як filter) | A03:2021 | CWE-943 | high |
-| B-04 | Server-side request forgery (SSRF) — fetch/axios з user-controlled URL | A10:2021 | CWE-918 | high |
-| B-05 | Path traversal у `fs.*` з user input без `path.resolve/normalize` | A01:2021 | CWE-22 | high |
-| B-06 | Unsafe deserialization (`eval`, `vm.run*`, `node-serialize`, `new Function(input)`) | A08:2021 | CWE-502 | critical |
-| B-07 | Weak crypto (`md5`/`sha1` для паролів; hardcoded JWT secret) | A02:2021 | CWE-327 | high |
-| B-08 | Express POST/PUT/DELETE/PATCH route без CSRF-middleware | A01:2021 | CWE-352 | medium |
-| B-09 | Express застосунок без `helmet()` middleware | A05:2021 | CWE-693 | medium |
-| B-10 | Server-side hardcoded credentials у connection-string (postgres/mongodb/mysql/...) | A07:2021 | CWE-798 | critical |
+| Tier | Rules | OWASP coverage |
+|---|---|---|
+| Frontend (R-XX) | R-01 … R-11 | A01, A02, A03, A04, A05, A07, A08 |
+| Backend (B-XX) | B-01 … B-15 | A01, A02, A03, A05, A07, A08, A10 |
+| Container (D-XX) | D-01 … D-08 | A04, A05, A06, A07 |
 
-## Docker / Container rules (D-XX)
-
-| ID | Назва | OWASP | CWE | Severity |
-|----|-------|-------|-----|----------|
-| D-01 | Container runs as root (no `USER` directive) | A05:2021 | CWE-250 | high |
-| D-02 | Use of mutable `latest` tag у `FROM` | A06:2021 | CWE-1104 | medium |
-| D-03 | Hardcoded secret у Dockerfile `ENV`/`ARG` | A07:2021 | CWE-798 | critical |
-| D-04 | `ADD` для local files замість `COPY` | A05:2021 | CWE-829 | medium |
-| D-05 | `privileged: true` у docker-compose | A04:2021 | CWE-250 | high |
-| D-06 | `network_mode: host` у docker-compose | A04:2021 | CWE-668 | high |
-| D-07 | Mount of `/var/run/docker.sock` (container escape) | A05:2021 | CWE-732 | critical |
-| D-08 | `apt-get install` без `--no-install-recommends` і без version pinning | A06:2021 | CWE-1104 | low |
+Total: 34 rules across 9 of 10 OWASP categories. (A09 Logging & Monitoring is operational, not code-level — out of scope for diff review.)
 
 ---
 
-## R-01 — `dangerouslySetInnerHTML` без санітизації
+# Frontend rules (R-XX)
 
-**OWASP**: A03:2021 (Injection) **CWE**: CWE-79 (Improper Neutralization of Input During Web Page Generation)
+## R-01 — Unsanitized `dangerouslySetInnerHTML`
 
-**Опис**. React-проп `dangerouslySetInnerHTML={{__html: x}}` рендерить рядок як HTML без екранування. Якщо `x` містить недовірений input (URL-параметр, GraphQL response, user-generated content) і не пропущений через санітайзер — DOM XSS.
+**OWASP** A03:2021 (Injection) · **CWE** CWE-79 · **Severity** high
 
-**AST-сигнатура** (TypeScript Compiler API):
-- `JsxAttribute.name.escapedText === 'dangerouslySetInnerHTML'`
-- value — `JsxExpression` containing object literal з ключем `__html`
-- значення `__html` — НЕ literal string; не виклик `DOMPurify.sanitize(...)`/`sanitizeHtml(...)`
+React's `dangerouslySetInnerHTML={{__html: x}}` renders `x` as raw HTML, bypassing JSX text escaping. If `x` is user-controlled (URL params, GraphQL response, user comments, markdown render output), the attacker injects `<script>` or event-handler attributes and executes JavaScript in the victim's browser.
 
-**False positive guard**. Якщо джерело — `import` з constants або статичний літерал → `confidence: low`, FP-likely.
-
-**Remediation**. Використати `DOMPurify.sanitize(html, {ALLOWED_TAGS:[...]})` або відмовитись від HTML-рендеру на користь markdown-парсера з allowlist.
-
-**OWASP Cheat Sheet**: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
-
----
-
-## R-02 — `innerHTML` / `outerHTML` / `document.write` із зовнішнім input
-
-**OWASP**: A03:2021 **CWE**: CWE-79
-
-**Опис**. Прямий запис у DOM через `el.innerHTML = x`, `outerHTML`, `document.write(x)`, `insertAdjacentHTML(pos, x)` — XSS, якщо `x` неперевірений.
-
-**AST-сигнатура**:
-- `BinaryExpression` з `left.name === 'innerHTML' | 'outerHTML'` і operator `=`
-- `CallExpression` з `expression === 'document.write' | 'document.writeln'`
-- `CallExpression` з callee `insertAdjacentHTML`
-
-**False positive guard**. Праве значення — string literal без template substitutions → FP.
-
-**Remediation**. `textContent` для тексту; `DOMPurify.sanitize` + `innerHTML` тільки якщо HTML-рендер реально потрібен.
-
----
-
-## R-03 — `<a target="_blank">` без `rel="noopener noreferrer"`
-
-**OWASP**: A05:2021 (Security Misconfiguration) **CWE**: CWE-1022 (Use of Web Link to Untrusted Target with window.opener Access)
-
-**Опис**. `target="_blank"` без `rel="noopener"` дає відкритій сторінці доступ до `window.opener` → reverse tabnabbing. У сучасних браузерах для same-origin поведінка змінилась, але для cross-origin без явного rel — атака можлива.
-
-**AST-сигнатура**:
-- `JsxOpeningElement` з `tagName === 'a'`
-- атрибут `target` зі значенням `'_blank'`
-- немає атрибута `rel`, або `rel` не містить `noopener`
-
-**Remediation**. Додати `rel="noopener noreferrer"`.
-
----
-
-## R-04 — `javascript:` URL у `href` / `src`
-
-**OWASP**: A03:2021 **CWE**: CWE-79
-
-**Опис**. `<a href="javascript:...">` або `<iframe src={user}>` де `user` починається з `javascript:` — XSS. React блокує це починаючи з 16.9 з warning, але в TS/HTML/Vue все ще проходить.
-
-**AST-сигнатура**:
-- `JsxAttribute` `href`/`src` зі значенням, що матчить `/^javascript:/i`
-- АБО динамічне значення зі змінної без перевірки `startsWith('http')`/`new URL()` валідації
-
-**Remediation**. Валідувати протокол через `new URL(value).protocol === 'https:'` або allowlist.
-
----
-
-## R-05 — Prototype pollution
-
-**OWASP**: A08:2021 (Software and Data Integrity Failures) **CWE**: CWE-1321 (Improperly Controlled Modification of Object Prototype Attributes)
-
-**Опис**. Рекурсивний merge `Object.assign({}, untrusted)` або кастомні `deepMerge`/`extend` з ключами `__proto__`, `constructor.prototype` змінюють `Object.prototype` глобально → bypass authn, RCE у Node-частині bundle.
-
-**AST-сигнатура**:
-- `CallExpression` з callee `Object.assign` де перший аргумент — `{}` і другий — змінна з невідомим джерелом
-- кастомні функції з рекурсивним обходом ключів без перевірки `key === '__proto__' | 'constructor' | 'prototype'`
-
-**Remediation**. Використати `structuredClone`, `Object.create(null)` як target, або lodash `_.merge` з версією без CVE; перевіряти ключі.
-
----
-
-## R-06 — Токени/секрети у `localStorage` / `sessionStorage`
-
-**OWASP**: A02:2021 (Cryptographic Failures) **CWE**: CWE-922 (Insecure Storage of Sensitive Information)
-
-**Опис**. `localStorage.setItem('token', ...)`, `'jwt'`, `'access_token'`, `'refresh_token'` — доступно будь-якому скрипту на сторінці; XSS = повна крадіжка токена. Стандарт — `httpOnly Secure SameSite` cookies.
-
-**AST-сигнатура**:
-- `CallExpression` `localStorage.setItem` / `sessionStorage.setItem` з першим аргументом — рядок, що містить `token | jwt | secret | password | credential | auth`
-- АБО `localStorage[key] = value` з тими самими ключами
-
-**Remediation**. Перенести у httpOnly cookies (потрібна координація з backend) або використати `IndexedDB` з encryption-at-rest + memory-only token holder.
-
----
-
-## R-07 — Hard-coded secrets
-
-**OWASP**: A07:2021 (Identification and Authentication Failures) **CWE**: CWE-798 (Use of Hard-coded Credentials)
-
-**Опис**. Паттерни: `apiKey: 'sk-...'`, `Authorization: 'Bearer eyJ...'`, AWS keys (`AKIA[0-9A-Z]{16}`), Google API keys (`AIza[0-9A-Za-z-_]{35}`), Stripe (`sk_live_`, `pk_live_`).
-
-**AST-сигнатура**:
-- `StringLiteral` що матчить regexes:
-  - `/AKIA[0-9A-Z]{16}/` (AWS)
-  - `/AIza[0-9A-Za-z\-_]{35}/` (Google)
-  - `/sk_live_[0-9a-zA-Z]{24,}/` (Stripe live)
-  - `/eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/` (JWT)
-  - `/-----BEGIN (RSA |EC )?PRIVATE KEY-----/`
-- `PropertyAssignment` з ключем `apiKey | api_key | secret | token | password | privateKey`, значенням — non-empty StringLiteral з ентропією > 4.0 біт/символ
-
-**False positive guard**. Файли в `.test.ts` / `__mocks__/` з очевидними тестовими значеннями (`'test-key-123'`, `'fake-token'`) → FP.
-
-**Remediation**. Перенести у `.env` (з `VITE_` prefix лише для **public** значень), у secret manager, або перевести у backend proxy.
-
----
-
-## R-08 — Open redirect
-
-**OWASP**: A01:2021 (Broken Access Control) **CWE**: CWE-601 (URL Redirection to Untrusted Site)
-
-**Опис**. `window.location.href = params.get('redirect')` без allowlist → phishing.
-
-**AST-сигнатура**:
-- Присвоєння `window.location` / `window.location.href` / `location.assign` з аргументом, що походить (через taint) з `URLSearchParams`, `useSearchParams`, `props.location`, `route.query`.
-
-**Remediation**. Allowlist домени, або relative-path-only валідація (`new URL(target, location.origin).origin === location.origin`).
-
----
-
-## R-09 — `postMessage` без перевірки origin
-
-**OWASP**: A04:2021 (Insecure Design) **CWE**: CWE-346 (Origin Validation Error)
-
-**Опис**. `window.addEventListener('message', e => { /* без перевірки e.origin */ })` приймає повідомлення з будь-якого фрейма → XSS у host-сторінці через child frame.
-
-**AST-сигнатура**:
-- `addEventListener('message', handler)`
-- handler не звертається до `e.origin` АБО порівняння `e.origin === '*'`
-
-**Remediation**. Перевіряти `event.origin` проти allowlist; для відправлення — `targetWindow.postMessage(data, EXACT_ORIGIN)` (не `'*'`).
-
----
-
-## R-10 — Відсутній CSP / SRI
-
-**OWASP**: A05:2021 **CWE**: CWE-693 (Protection Mechanism Failure)
-
-**Опис**. У `index.html`/`vite.config.ts`/Webpack-конфігу немає `<meta http-equiv="Content-Security-Policy">` або `Content-Security-Policy` header. Зовнішні `<script src>` без `integrity=` атрибута — supply chain ризик.
-
-**AST/text-сигнатура**:
-- `index.html` без `<meta http-equiv="Content-Security-Policy">` і без `helmet`/`vite-plugin-csp` у конфігу
-- `<script src="https://...">` без `integrity` і `crossorigin`
-
-**Remediation**. Додати CSP з `default-src 'self'`, `script-src 'self' 'nonce-...'`. Для CDN-скриптів — `integrity="sha384-..." crossorigin="anonymous"`.
-
----
-
-## R-11 — CORS misconfig у клієнтських wrappers
-
-**OWASP**: A05:2021 **CWE**: CWE-942 (Permissive Cross-domain Policy)
-
-**Опис**. `fetch(url, {credentials: 'include', mode: 'no-cors'})` або кастомні Apollo links з `Access-Control-Allow-Origin: *` для credentialed endpoints.
-
-**AST-сигнатура**:
-- `fetch` / `axios` configs з одночасним `credentials: 'include'` і wildcard origin/`mode: 'no-cors'`.
-
-**Remediation**. Використати exact origin; ніколи не комбінувати credentials з wildcard.
-
----
-
-## R-12 — Залежності з відомими CVE
-
-**OWASP**: A06:2021 (Vulnerable and Outdated Components) **CWE**: CWE-1395
-
-**Опис**. Запуск `pnpm audit --json` → парсинг `advisories`. Severity мапиться напряму.
-
-**Команда**:
-```sh
-pnpm audit --json --audit-level low > audit.json || true
+**Vulnerable**:
+```tsx
+<div dangerouslySetInnerHTML={{ __html: comment.body }} />
+<article dangerouslySetInnerHTML={{ __html: marked.parse(post.markdown) }} />
 ```
 
-**Remediation**. `pnpm update <pkg>`, або `pnpm.overrides` для transitive deps.
+**Safe**:
+```tsx
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.body) }} />
+// or skip raw HTML entirely:
+<div>{comment.body}</div>   // JSX auto-escapes
+```
+
+**Confidence guidance**: if the value is a hardcoded literal or an imported constant (`import { COPY } from './copy'`), downgrade to `confidence: low` or use `verdict: NEEDS_HUMAN`. Genuine sanitizer calls (`DOMPurify.sanitize`, `sanitizeHtml`, `xss`) on the value mean the diff is safe.
+
+**Fix**: Wrap with `DOMPurify.sanitize(html, { ALLOWED_TAGS: [...] })`, or render as plain text.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html>
 
 ---
 
-# BE Rules — Detail
+## R-02 — DOM injection via `innerHTML` / `outerHTML` / `document.write`
 
-## B-01 — SQL injection через raw query
+**OWASP** A03:2021 · **CWE** CWE-79 · **Severity** high
 
-**OWASP**: A03:2021 (Injection) **CWE**: CWE-89 (Improper Neutralization of Special Elements used in an SQL Command)
+Direct DOM writes from non-literal values. Includes `el.innerHTML = x`, `el.outerHTML = x`, `el.insertAdjacentHTML(pos, x)`, `document.write(x)`, `document.writeln(x)`. Same XSS category as R-01 but outside React's JSX path.
 
-**Опис**. `db.query(\`SELECT * FROM users WHERE id = ${id}\`)`, `knex.raw('... ' + req.body.x)`, `pool.query`, `client.query`, `sequelize.query` — raw SQL з конкатенацією/інтерполяцією user input.
+**Vulnerable**:
+```ts
+container.innerHTML = userBio;
+document.write('<h1>' + req.query.title + '</h1>');
+el.insertAdjacentHTML('beforeend', response.html);
+```
 
-**AST-сигнатура**:
-- `CallExpression` з callee, що матчить `(\.|^)(raw|query|execute)$`
-- Перший аргумент — `TemplateExpression` з `${...}` (interpolation), АБО
-- `BinaryExpression` з оператором `+` і operand-ами, що містять `req\.|request\.|params|query|body|input|user`.
+**Safe**:
+```ts
+container.textContent = userBio;          // text-only, never parsed
+container.innerHTML = DOMPurify.sanitize(userBio);
+el.replaceChildren(document.createTextNode(userBio));
+```
 
-**Remediation**. Використовувати **prepared statements** з placeholders (`?`/`$1`/`:name`) або query builders типу Knex/Sequelize ORM.
+**Confidence guidance**: assignments where the right-hand side is a string literal (`el.innerHTML = '<br>'`) are safe. Calls that pass a sanitizer output are safe.
 
-**OWASP Cheat Sheet**: https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+**Fix**: prefer `textContent` for plain text, or sanitize before assignment.
 
----
-
-## B-02 — Command injection через `child_process`
-
-**OWASP**: A03:2021 **CWE**: CWE-78 (OS Command Injection)
-
-**Опис**. `exec/execSync/spawn/spawnSync/execFile/execFileSync` з template literal або concat, де input з `req`/`request`/`params`/`query`/`body`/`process.argv`. Призводить до RCE.
-
-**AST-сигнатура**:
-- `CallExpression` з callee `(^|\.)(exec|execSync|spawn|spawnSync|execFile|execFileSync)$`
-- Перший аргумент не літерал АБО містить tainted-токени, АБО — template/binary expression.
-
-**Remediation**. `execFile(cmd, [args])` (без shell), валідовані whitelist значень, або повна відмова від shell-out у користь спеціалізованих библіотек.
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html>
 
 ---
 
-## B-03 — NoSQL injection
+## R-03 — `target="_blank"` without `rel="noopener"` (tabnabbing)
 
-**OWASP**: A03:2021 **CWE**: CWE-943 (Improper Neutralization of Special Elements in Data Query Logic)
+**OWASP** A05:2021 · **CWE** CWE-1022 · **Severity** medium
 
-**Опис**. `User.find(req.body)` дозволяє атакеру передати `{$gt:""}`, `{$ne:null}` як filter — вибирає всі записи. `$where: req.query.fn` — JS-injection.
+Links that open in a new tab without `rel="noopener noreferrer"` let the destination page access `window.opener` in the parent, enabling reverse tabnabbing (the new tab can redirect the original tab to a phishing clone). Modern browsers ship implicit `noopener` for `target="_blank"` on most sites, but the explicit attribute is the right defense.
 
-**AST-сигнатура**:
-- `PropertyAssignment` з ключем `$where` і non-literal value.
-- `CallExpression` з callee `\.(find|findOne|findOneAndUpdate|updateOne|updateMany|deleteOne|deleteMany)$` і першим аргументом, який починається з `req.body|req.query|request.body|request.query`.
+**Vulnerable**:
+```tsx
+<a href={post.url} target="_blank">Read more</a>
+<a href="https://external.com" target="_blank" rel="noreferrer">…</a>  // noreferrer alone is not enough
+```
 
-**Remediation**. Явно витягати конкретні поля: `User.find({ name: String(req.body.name) })`. Валідація схемою (Joi, zod). Заборонити `$where` query operator.
+**Safe**:
+```tsx
+<a href={post.url} target="_blank" rel="noopener noreferrer">Read more</a>
+```
 
----
+**Confidence guidance**: if `rel` is set dynamically (`rel={someVar}`) we can't tell from the diff alone — downgrade confidence. Internal links (same origin) are lower risk but still good hygiene.
 
-## B-04 — Server-side request forgery (SSRF)
+**Fix**: always include `rel="noopener"` (and `noreferrer` for cross-origin privacy).
 
-**OWASP**: A10:2021 (SSRF) **CWE**: CWE-918
-
-**Опис**. Сервер виконує HTTP-запит на адресу, контрольовану користувачем. Дозволяє атакеру дістати internal services (metadata, localhost), сканувати мережу.
-
-**AST-сигнатура**:
-- `CallExpression` з callee `^(fetch|axios|axios\.(get|post|put|delete|patch|request)|http\.get|https\.get|got|request|node-fetch)$`.
-- Аргумент містить `req.body|req.query|req.params|request.body|request.query|request.params`.
-
-**Remediation**. Allowlist дозволених host-ів. Заборонити приватні IP (`10.0.0.0/8`, `192.168.0.0/16`, `127.0.0.0/8`, `169.254.169.254`). Окремий outbound proxy.
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#tabnabbing>
 
 ---
 
-## B-05 — Path traversal у `fs.*`
+## R-04 — `javascript:` URL in `href` / `src`
 
-**OWASP**: A01:2021 (Broken Access Control) **CWE**: CWE-22
+**OWASP** A03:2021 · **CWE** CWE-79 · **Severity** high
 
-**Опис**. `fs.readFile(req.query.name)` дозволяє `../../etc/passwd`. Розкриває файлову систему сервера.
+URL attributes whose value starts with `javascript:` execute the rest as JavaScript when clicked. Often slipped in via user-controlled URL fields.
 
-**AST-сигнатура**:
-- `CallExpression` з callee `^(fs|fs\/promises|fsp)\.(readFile|readFileSync|createReadStream|writeFile|writeFileSync|createWriteStream|unlink|unlinkSync|stat|statSync|access|accessSync)$`.
-- Аргумент містить `req.body|req.query|req.params|request.body|request.query|request.params`.
-- І НЕ містить `path.resolve` або `path.normalize`.
+**Vulnerable**:
+```tsx
+<a href="javascript:alert(1)">Click</a>
+<a href={post.callback}>…</a>                     // when post.callback can be "javascript:…"
+<iframe src={userProfile.website} />              // same risk
+```
 
-**Remediation**. `path.resolve(BASE, sanitized)` + перевірка, що результат починається з `BASE`. Або заборонити `..` у шляху.
+**Safe**:
+```tsx
+const href = /^https?:\/\//.test(post.callback) ? post.callback : '#';
+<a href={href}>…</a>
+```
+
+**Confidence guidance**: hardcoded `javascript:`-URL is unambiguous TP. Dynamic href whose value can't be inspected requires `NEEDS_HUMAN`.
+
+**Fix**: validate URL scheme on input (`new URL(value).protocol === 'https:'`); reject `javascript:`, `data:`, `vbscript:` schemes.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#rule-5-url-escape-before-inserting-untrusted-data-into-html-url-parameter-values>
+
+---
+
+## R-05 — Prototype pollution patterns
+
+**OWASP** A08:2021 · **CWE** CWE-1321 · **Severity** high
+
+Recursive merge or `Object.assign({}, untrusted)` where untrusted carries `__proto__`, `constructor`, or `prototype` keys mutates `Object.prototype` globally, leading to logic bypass, auth bypass, or RCE depending on downstream consumers.
+
+**Vulnerable**:
+```ts
+const config = Object.assign({}, defaults, JSON.parse(req.body));
+function deepMerge(t, s) { for (const k in s) t[k] = (typeof s[k] === 'object') ? deepMerge(t[k] || {}, s[k]) : s[k]; }
+```
+
+**Safe**:
+```ts
+const config = { ...defaults, ...sanitize(JSON.parse(req.body)) };
+function safeMerge(t, s) {
+  for (const k of Object.keys(s)) {
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+    // …
+  }
+}
+// Or use Object.create(null), lodash.mergeWith with a customizer, or Immer.
+```
+
+**Confidence guidance**: bare `Object.assign({}, x)` where `x` is clearly typed and not from user input is safe. Recursive merge with no key check on user-controlled input is a strong TP.
+
+**Fix**: validate keys against an allowlist before merge; use `Object.create(null)` for untrusted maps.
+
+**Reference**: <https://github.com/HoLyVieR/prototype-pollution-nsec18>
+
+---
+
+## R-06 — Tokens / secrets in `localStorage` or `sessionStorage`
+
+**OWASP** A02:2021 · **CWE** CWE-922 · **Severity** high
+
+Storing JWTs, refresh tokens, API keys, or session credentials in `localStorage` / `sessionStorage` exposes them to any XSS — including 3rd-party scripts on the page. Use httpOnly cookies for session credentials.
+
+**Vulnerable**:
+```ts
+localStorage.setItem('jwt', response.token);
+sessionStorage.setItem('refreshToken', refresh);
+window.localStorage.setItem('api_key', user.apiKey);
+```
+
+**Safe**:
+```ts
+// Have the server set an httpOnly, Secure, SameSite cookie:
+// Set-Cookie: session=...; HttpOnly; Secure; SameSite=Lax
+// Client side never touches the token directly.
+```
+
+**Confidence guidance**: keys named `theme`, `lang`, `consent`, `lastVisited` are not secrets. Trigger on key names containing `token`, `jwt`, `secret`, `password`, `credential`, `auth`, `api_key`. Test files (`*.test.ts`, `*.spec.ts`) are usually fine to ignore.
+
+**Fix**: move session tokens to httpOnly cookies set by the server; for non-session API keys, fetch short-lived ones from an authenticated endpoint and keep in memory only.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#local-storage>
+
+---
+
+## R-07 — Hardcoded secrets / API keys
+
+**OWASP** A07:2021 · **CWE** CWE-798 · **Severity** critical
+
+API keys, OAuth client secrets, JWT signing keys, AWS credentials embedded in client-side or shared source. Even in private repos they leak via build artifacts, git history, error logs. Recognizable formats: `AKIA…` (AWS), `AIza…` (Google), `sk_live_…`/`pk_live_…` (Stripe), `xox[abp]-…` (Slack), `ghp_…` (GitHub PAT), `eyJ…` (JWT), `-----BEGIN … PRIVATE KEY-----`.
+
+**Vulnerable**:
+```ts
+const stripe = new Stripe('sk_live_51Hxxxxxxxxxxxxxxxxxxxxxx');
+const config = { awsKey: 'AKIAIOSFODNN7EXAMPLE', awsSecret: 'wJalrXUtnFEMI/...' };
+const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...';
+```
+
+**Safe**:
+```ts
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// .env (gitignored):
+// STRIPE_SECRET_KEY=sk_live_...
+// Or pull from AWS Secrets Manager, Vault, Doppler, etc.
+```
+
+**Confidence guidance**: strings that look like real secrets (high entropy, match known prefixes) are TP with high confidence. Strings labeled `test`, `dummy`, `example`, `xxx`, `your_api_key_here` are FP. URLs, human-readable identifiers like `'A2: Broken Auth'`, route paths like `'/api/v1'` are not secrets.
+
+**Fix**: rotate the leaked secret immediately, then read from `process.env` or a secret manager. Add the leaked value to `.gitleaks.toml` or similar to prevent re-introduction.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html>
+
+---
+
+## R-08 — Open redirect via `window.location = userInput`
+
+**OWASP** A01:2021 · **CWE** CWE-601 · **Severity** high
+
+Setting `window.location`, `window.location.href`, `location.assign(...)`, or `location.replace(...)` to a URL derived from query string, route params, or `postMessage` payload lets an attacker redirect the victim to a phishing page after a legitimate-looking entry URL.
+
+**Vulnerable**:
+```ts
+const next = new URLSearchParams(location.search).get('next') || '/';
+window.location.href = next;                       // attacker sends ?next=https://evil.com
+
+router.replace(props.location.state?.from);        // unvalidated origin
+```
+
+**Safe**:
+```ts
+const next = new URLSearchParams(location.search).get('next') || '/';
+// Allow only same-origin paths:
+window.location.href = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+// Or whitelist allowed hosts:
+const allowed = new Set(['app.example.com', 'admin.example.com']);
+const url = new URL(next, location.origin);
+window.location.href = allowed.has(url.host) ? url.href : '/';
+```
+
+**Confidence guidance**: redirect targets sourced from `location.search`, `URLSearchParams`, `router.query`, `props.location.state` are tainted. Targets that are hardcoded literals or come from authenticated server responses are usually safe.
+
+**Fix**: validate the target is a relative path or a host in an explicit allowlist; never trust the raw value.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html>
+
+---
+
+## R-09 — `postMessage` without origin validation
+
+**OWASP** A04:2021 · **CWE** CWE-346 · **Severity** high
+
+Two patterns: (a) `addEventListener('message', handler)` where `handler` doesn't check `event.origin` accepts messages from any iframe/window; (b) `target.postMessage(data, '*')` broadcasts to any origin embedding the iframe. Both expose a cross-origin attack surface.
+
+**Vulnerable**:
+```ts
+window.addEventListener('message', (e) => {
+  doStuff(e.data);                                  // no e.origin check
+});
+
+iframe.contentWindow.postMessage({ token }, '*');   // wildcard target
+```
+
+**Safe**:
+```ts
+const ALLOWED_ORIGIN = 'https://parent.example.com';
+window.addEventListener('message', (e) => {
+  if (e.origin !== ALLOWED_ORIGIN) return;
+  doStuff(e.data);
+});
+
+iframe.contentWindow.postMessage({ token }, ALLOWED_ORIGIN);
+```
+
+**Confidence guidance**: `e.origin === '...'`, `e.origin.startsWith('https://...')`, or `e.origin in ALLOWED` inside the handler count as guarding. Wildcard `'*'` in `postMessage` is unconditionally a TP.
+
+**Fix**: pin to an exact origin (or set of origins); never use `'*'`.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#web-messaging>
+
+---
+
+## R-10 — Missing CSP / SRI on HTML documents
+
+**OWASP** A05:2021 · **CWE** CWE-693 · **Severity** medium
+
+HTML documents shipped without a Content-Security-Policy `<meta>` tag (and without server CSP headers) provide no defense in depth against XSS. External `<script src>` without `integrity="sha384-..."` (SRI) lets a compromised CDN ship attacker-controlled JS.
+
+**Vulnerable**:
+```html
+<!doctype html>
+<html><head>
+  <script src="https://cdn.example.com/lib.js"></script>
+</head>...
+```
+
+**Safe**:
+```html
+<!doctype html>
+<html><head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-...'">
+  <script src="https://cdn.example.com/lib.js" integrity="sha384-..." crossorigin="anonymous"></script>
+</head>...
+```
+
+**Confidence guidance**: only flag full HTML documents (containing `<!doctype html>` or `<html>`). Framework component templates (`.vue`, `.svelte`, Angular partials) are not full documents — skip. CSP delivered via server header instead of meta tag is also valid; if the diff only shows HTML, assume the server might or might not set it (`NEEDS_HUMAN`).
+
+**Fix**: add a meta CSP or configure the server to send the CSP header; add `integrity` + `crossorigin` to every external `<script>` and `<link rel=stylesheet>`.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html>
+
+---
+
+## R-11 — CORS misconfiguration in client fetch
+
+**OWASP** A05:2021 · **CWE** CWE-942 · **Severity** high
+
+`fetch(url, { credentials: 'include', mode: 'no-cors' })` or `credentials: 'include'` against an endpoint that responds with `Access-Control-Allow-Origin: *` defeats the cross-origin protection. The client may be unintentionally sending session cookies to third-party endpoints.
+
+**Vulnerable**:
+```ts
+fetch('https://api.partner.com/me', {
+  credentials: 'include',
+  mode: 'no-cors',
+});
+```
+
+**Safe**:
+```ts
+fetch('https://api.partner.com/me', {
+  credentials: 'include',                         // only when same-origin or partner is trusted
+  mode: 'cors',                                   // explicit CORS
+});
+// Server must return Access-Control-Allow-Origin: <exact-origin>, not '*'.
+```
+
+**Confidence guidance**: `credentials: 'include'` alone is fine. Combined with `mode: 'no-cors'` or wildcard-origin Access-Control headers, it's a TP.
+
+**Fix**: drop `credentials: 'include'` for non-authenticated requests; use `mode: 'cors'` with an exact-origin server response.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html>
+
+---
+
+# Backend rules (B-XX)
+
+## B-01 — SQL injection via raw query with user input
+
+**OWASP** A03:2021 · **CWE** CWE-89 · **Severity** critical
+
+Building a SQL string via template literal or concatenation that includes `req.body`/`req.query`/`req.params` directly. Includes raw drivers (`pg`, `mysql2`), Knex `.raw`, Sequelize `.query`/`.literal`, TypeORM `.where("…${x}…")` on a query builder.
+
+**Vulnerable**:
+```ts
+await pool.query(`SELECT * FROM users WHERE email = '${req.body.email}'`);
+await knex.raw('SELECT * FROM products WHERE name LIKE ' + "'%" + req.query.q + "%'");
+await sequelize.query(`UPDATE accounts SET balance = ${req.body.amount} WHERE id = ${req.params.id}`);
+await repo.createQueryBuilder('u').where(`u.role = '${req.body.role}'`).getMany();
+```
+
+**Safe**:
+```ts
+await pool.query('SELECT * FROM users WHERE email = $1', [req.body.email]);
+await knex('products').where('name', 'like', `%${req.query.q}%`);                 // query builder
+await sequelize.query('UPDATE accounts SET balance = :amount WHERE id = :id', { replacements: { amount: req.body.amount, id: req.params.id } });
+await repo.createQueryBuilder('u').where('u.role = :role', { role: req.body.role }).getMany();
+```
+
+**Confidence guidance**: template literal with `${…}` containing `req.*` is high-confidence TP. String concatenation `'… ' + x + ' …'` where `x` is user-typed is TP. Parameterized queries with `?` or `$1` placeholders are safe.
+
+**Fix**: always use parameter binding. Where a string really must be interpolated (table name, column name from allowlist), validate it against a strict set before splicing.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html>
+
+---
+
+## B-02 — Command injection via `child_process` with user input
+
+**OWASP** A03:2021 · **CWE** CWE-78 · **Severity** critical
+
+`exec`, `execSync`, `spawn`, `spawnSync`, `execFile`, `execFileSync` invoked with a shell command that interpolates `req.*` or `process.argv`. Even `spawn` with `shell: true` re-introduces the shell.
+
+**Vulnerable**:
+```ts
+exec(`convert ${req.body.input} out.png`);
+execSync('rm -rf ' + req.params.path);
+spawn('sh', ['-c', `git clone ${req.body.repo}`]);
+```
+
+**Safe**:
+```ts
+execFile('convert', [req.body.input, 'out.png']);            // arg array, no shell
+const r = spawn('git', ['clone', req.body.repo], { shell: false });
+// Validate paths/inputs first too:
+if (!/^[a-zA-Z0-9._-]+$/.test(req.body.input)) return res.status(400).end();
+```
+
+**Confidence guidance**: any non-literal first argument to `exec`/`execSync` is high-risk. `execFile`/`spawn` with literal binary + array of args (no `shell: true`) is safe.
+
+**Fix**: use `execFile`/`spawn` with argument arrays; validate input against strict allowlist; never use `exec` for user-tainted commands.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html>
+
+---
+
+## B-03 — NoSQL injection (Mongoose `$where`, untrusted operators)
+
+**OWASP** A03:2021 · **CWE** CWE-943 · **Severity** high
+
+MongoDB-style queries where a filter object is built directly from `req.body` or `req.query` lets the attacker inject operators like `{$gt: ''}` (matches anything) or `{$where: 'function() { return true }'}` (JS execution on the DB).
+
+**Vulnerable**:
+```ts
+const user = await User.findOne(req.body);                            // attacker: {email:{$gt:''}, password:{$gt:''}}
+const items = await db.collection('items').find({ $where: req.body.code });
+await User.updateOne(req.body.filter, req.body.update);
+```
+
+**Safe**:
+```ts
+const user = await User.findOne({ email: String(req.body.email) }).select('+passwordHash');
+const valid = await bcrypt.compare(req.body.password, user.passwordHash);
+// Or use a validator (zod, joi, class-validator) to strip operators:
+const safe = z.object({ email: z.string().email() }).parse(req.body);
+const user2 = await User.findOne(safe);
+```
+
+**Confidence guidance**: passing whole `req.body` or `req.query` as a filter is TP. Passing individual fields after type coercion or schema validation is safe.
+
+**Fix**: validate input shape with a schema; coerce primitives; never accept operator-containing objects from clients.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet_in_Java.html#nosql-injection>
+
+---
+
+## B-04 — Server-Side Request Forgery (SSRF)
+
+**OWASP** A10:2021 · **CWE** CWE-918 · **Severity** high
+
+Any outbound HTTP call (`fetch`, `axios`, `got`, `superagent`, `needle`, `phin`, `node-fetch`, `undici.fetch/request`, `http.get`, `http.request`, `https.get`, `https.request`) where the URL is derived from `req.body|query|params`. Lets the attacker probe internal networks, cloud metadata (169.254.169.254), or unauthenticated admin panels via the server's IP.
+
+**Vulnerable**:
+```ts
+app.post('/preview', async (req, res) => {
+  const r = await axios.get(req.body.url);
+  res.json({ html: r.data });
+});
+await fetch(req.query.target as string);
+await got(req.body.callback);
+```
+
+**Safe**:
+```ts
+const ALLOWED = new Set(['api.partner.com', 'cdn.example.com']);
+const url = new URL(req.body.url);
+if (!ALLOWED.has(url.host) || url.protocol !== 'https:') return res.status(400).end();
+const r = await axios.get(url.toString(), { timeout: 3000 });
+// Or use a server-side allowlist proxy.
+```
+
+**Confidence guidance**: any HTTP client called with a URL derived from `req.*` is high-confidence TP. Hardcoded URLs or env-derived URLs are safe. Allowlist-validated URLs are safe.
+
+**Fix**: enforce an explicit allowlist of target hosts; restrict to `https:`; block private/loopback IP ranges (10/8, 127/8, 169.254/16, 192.168/16, ::1, fc00::/7).
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html>
+
+---
+
+## B-05 — Path traversal in `fs.*`
+
+**OWASP** A01:2021 · **CWE** CWE-22 · **Severity** high
+
+`fs.readFile`, `fs.writeFile`, `fs.createReadStream`, `fs.unlink`, etc. called with a path derived from `req.body|query|params` lets the attacker read/write files outside the intended directory via `../` sequences.
+
+**Vulnerable**:
+```ts
+app.get('/file/:name', (req, res) => {
+  res.sendFile(`/var/data/${req.params.name}`);              // ?name=../../../etc/passwd
+});
+await fs.readFile(path.join('/uploads', req.query.file));
+await fs.unlink(req.body.path);
+```
+
+**Safe**:
+```ts
+const base = path.resolve('/var/data');
+const target = path.resolve(base, path.basename(req.params.name));
+if (!target.startsWith(base + path.sep)) return res.status(400).end();
+res.sendFile(target);
+```
+
+**Confidence guidance**: file paths from `req.*` without `path.resolve` + boundary check are TP. Paths from env vars or hardcoded literals are safe. `path.basename(req.x)` alone helps but isn't sufficient (Windows separators, absolute paths).
+
+**Fix**: resolve the target path, assert it stays inside the allowed root, and reject otherwise. Prefer fixed identifiers (UUIDs) as a lookup key into a DB rather than letting users name files directly.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html>
 
 ---
 
 ## B-06 — Unsafe deserialization / dynamic code execution
 
-**OWASP**: A08:2021 (Software and Data Integrity Failures) **CWE**: CWE-502
+**OWASP** A08:2021 · **CWE** CWE-502 · **Severity** critical
 
-**Опис**. `eval(req.body.code)`, `vm.runInThisContext`, `node-serialize.unserialize` — RCE. `node-serialize` має відому RCE через `__js_function`.
+`eval(x)`, `new Function(x)`, `vm.runInThisContext`, `vm.runInNewContext`, `node-serialize.unserialize` invoked with user-controlled input. RCE on the server.
 
-**AST-сигнатура**:
-- `eval(non-literal)`.
-- `CallExpression` callee `^vm\.(runInThisContext|runInContext|runInNewContext|compileFunction)$`.
-- `serialize/unserialize`, `node-serialize.unserialize`.
-- `Function(...)` або `new Function(...)`.
+**Vulnerable**:
+```ts
+eval(req.body.code);
+const fn = new Function('payload', req.body.fn);
+vm.runInNewContext(req.body.script, sandbox);
+const obj = unserialize(req.body.data);                      // node-serialize is famous for __js_function RCE
+```
 
-**Remediation**. Замість `eval` — `JSON.parse` для даних, query builders для DSL. `vm` тільки з sandbox-ed контекстом. Замінити `node-serialize` на `JSON.parse`.
+**Safe**:
+```ts
+// Just don't. If you need user-defined formulas, use a safe expression evaluator
+// like expr-eval, mathjs, or a domain-specific interpreter you control.
+// For deserialization, use JSON.parse with a schema validator.
+const data = z.object({ name: z.string(), amount: z.number() }).parse(JSON.parse(req.body.data));
+```
 
----
+**Confidence guidance**: `eval`/`new Function` with non-literal first argument is unconditionally TP. `vm.run*` is TP. JSON.parse alone is fine (no code execution). `node-serialize.unserialize` is critical TP.
 
-## B-07 — Weak crypto
+**Fix**: avoid dynamic code execution entirely; use a sandboxed evaluator with whitelisted operators; deserialize via JSON + schema.
 
-**OWASP**: A02:2021 (Cryptographic Failures) **CWE**: CWE-327 (Use of a Broken or Risky Cryptographic Algorithm)
-
-**Опис**. `crypto.createHash('md5')` для паролів — broken (rainbow tables). `jwt.sign(..., 'literalSecret', ...)` — secret у git history → token forgery.
-
-**AST-сигнатура**:
-- `crypto.createHash('md5'|'sha1')`.
-- `jwt.sign(..., LITERAL_SECRET, ...)` / `jwt.verify(..., LITERAL_SECRET, ...)` де secret — non-empty literal без test/fake/dummy markers.
-
-**Remediation**. Паролі: `bcrypt`, `argon2`, `scrypt` (libsodium). JWT secret: `process.env.JWT_SECRET` (>=256 біт випадковості). Для signature key — KMS.
-
----
-
-## B-08 — Missing CSRF protection
-
-**OWASP**: A01:2021 **CWE**: CWE-352 (Cross-Site Request Forgery)
-
-**Опис**. Express `app.post('/transfer', handler)` без CSRF-token-валідації — атакер може зробити запит з імені залогіненого юзера.
-
-**AST-сигнатура**:
-- `CallExpression` з callee `^(app|router)\.(post|put|delete|patch)$`.
-- Текст всього виклику не містить `csrf|csurf|csrfProtection|verifyCsrf|doubleCsrf`.
-- **Severity**: low confidence (можливо global middleware) → `verdict: NEEDS_HUMAN`.
-
-**Remediation**. `csurf` middleware або double-submit cookie pattern. SameSite=Strict cookie + Origin header check.
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html>
 
 ---
 
-## B-09 — Missing Helmet middleware
+## B-07 — Weak crypto (MD5/SHA1 for passwords, hardcoded JWT secret)
 
-**OWASP**: A05:2021 **CWE**: CWE-693
+**OWASP** A02:2021 · **CWE** CWE-327 · **Severity** high
 
-**Опис**. Express застосунок без `helmet()` middleware не виставляє security headers (X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security тощо).
+Two related patterns: (a) hashing passwords with `crypto.createHash('md5'|'sha1')` — fast hashes are bruteforceable; passwords need bcrypt/argon2/scrypt. (b) `jwt.sign(payload, 'some-hardcoded-string', ...)` puts the signing key in source.
 
-**AST/text-сигнатура**:
-- Файл містить `express()` АБО `require('express')()`.
-- Файл має route definitions: `app.get/post/...`, `router.X`.
-- Файл НЕ містить токен `helmet`.
+**Vulnerable**:
+```ts
+const hash = crypto.createHash('md5').update(password).digest('hex');
+const token = jwt.sign({ uid }, 'mysecret123', { expiresIn: '7d' });
+```
 
-**Remediation**. `import helmet from 'helmet'; app.use(helmet());`.
+**Safe**:
+```ts
+const hash = await bcrypt.hash(password, 12);                                   // or argon2
+const token = jwt.sign({ uid }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+```
+
+**Confidence guidance**: `createHash('md5'|'sha1')` for password-shaped data is TP. The same hashes for file integrity (checksum, ETag) are FP — md5/sha1 are still acceptable for non-cryptographic identification. JWT secret as a non-empty literal is TP; empty string or env-derived is safe.
+
+**Fix**: use bcrypt (≥cost 12), argon2id, or scrypt for passwords; load JWT secrets from env / KMS.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html>
 
 ---
 
-## B-10 — Server hardcoded credentials у connection string
+## B-08 — Missing CSRF protection on state-changing route
 
-**OWASP**: A07:2021 **CWE**: CWE-798
+**OWASP** A01:2021 · **CWE** CWE-352 · **Severity** medium
 
-**Опис**. `'postgres://user:password@host'` — пароль у git, у логах, у crash reports.
+Express POST/PUT/DELETE/PATCH routes that don't reference CSRF middleware (csurf, csrf-csrf, double-csrf) **when the app uses cookie-based session auth**. Cookie-only auth = browser auto-sends credentials on cross-origin requests; without CSRF token, attacker can forge state-changing requests via a CSRF page on another origin.
 
-**AST/text-сигнатура**:
-- `StringLiteral` що матчить `/^(postgres|postgresql|mongodb|mongodb\+srv|mysql|mariadb|redis|amqp|amqps):\/\/[^:@\/\s]+:[^@\s]{4,}@/`.
+**Vulnerable** (when cookie sessions are in use):
+```ts
+app.use(session({ secret: process.env.S, cookie: { httpOnly: true } }));
 
-**Remediation**. `process.env.DATABASE_URL` або secret manager (AWS Secrets Manager, Vault, Doppler).
+app.post('/transfer', (req, res) => {                       // no CSRF check
+  transfer(req.session.user, req.body.to, req.body.amount);
+  res.json({ ok: true });
+});
+```
+
+**Safe**:
+```ts
+app.use(session({ ... }));
+app.use(csurf());
+
+app.post('/transfer', (req, res) => {
+  // csurf verifies req.body._csrf or X-CSRF-Token header
+  transfer(req.session.user, req.body.to, req.body.amount);
+  res.json({ ok: true });
+});
+// Or: pure token-bearer APIs (Authorization: Bearer) don't need CSRF — same-site doesn't auto-send Authorization.
+```
+
+**Confidence guidance**: only flag if the diff shows cookie-session usage (`express-session`, `cookie-session`) AND new state-changing routes without CSRF middleware. APIs that authenticate via `Authorization: Bearer ...` don't need CSRF protection. If middleware setup is in a different file not in the diff, prefer `NEEDS_HUMAN`.
+
+**Fix**: add `csurf()` / `doubleCsrfProtection()` to the relevant router; or move to token-bearer auth.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html>
+
+---
+
+## B-09 — Missing Helmet middleware on Express app
+
+**OWASP** A05:2021 · **CWE** CWE-693 · **Severity** medium
+
+An Express app initialized with `express()` and route handlers but no `helmet()` middleware ships with default Express headers — missing CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy. Defense-in-depth gap.
+
+**Vulnerable**:
+```ts
+import express from 'express';
+const app = express();
+app.use(express.json());
+app.get('/api/me', ...);
+app.listen(3000);                                            // no helmet
+```
+
+**Safe**:
+```ts
+import express from 'express';
+import helmet from 'helmet';
+
+const app = express();
+app.use(helmet());                                           // or helmet({ contentSecurityPolicy: { directives: {...} } })
+app.use(express.json());
+app.get('/api/me', ...);
+app.listen(3000);
+```
+
+**Confidence guidance**: only flag if the diff adds Express app initialization without `helmet` (import + `app.use(helmet())`). If middleware is set up in a separate file we can't see, prefer `NEEDS_HUMAN`. Skip test files.
+
+**Fix**: `npm i helmet && app.use(helmet())` near the top of the middleware stack.
+
+**Reference**: <https://helmetjs.github.io/>
+
+---
+
+## B-10 — Hardcoded credentials in connection string
+
+**OWASP** A07:2021 · **CWE** CWE-798 · **Severity** critical
+
+Connection URIs like `postgres://user:password@host/db`, `mongodb://...`, `mysql://...`, `redis://...`, `amqp://...` with inline passwords in source. Same risk as R-07 but in a recognizable URL form.
+
+**Vulnerable**:
+```ts
+const pool = new Pool({ connectionString: 'postgres://app:s3cretP@ssw0rd@db.example.com/prod' });
+const mongo = mongoose.connect('mongodb+srv://admin:Adm1nP@ss@cluster0.abc.mongodb.net/app');
+```
+
+**Safe**:
+```ts
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+await mongoose.connect(process.env.MONGO_URI!);
+```
+
+**Confidence guidance**: URI literals containing `:password@` with 4+ char password are TP. Localhost test fixtures (`postgres://test:test@localhost`) are FP. Template literals interpolating env are safe.
+
+**Fix**: rotate the leaked credential; load from env or secret manager.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html>
+
+---
 
 ## B-11 — IDOR (Insecure Direct Object Reference)
 
-**OWASP**: A01:2021 (Broken Access Control) **CWE**: CWE-639 (Authorization Bypass Through User-Controlled Key)
+**OWASP** A01:2021 · **CWE** CWE-639 · **Severity** high
 
-**Опис**. `Order.findById(req.params.id)` без перевірки `req.user.id` дозволяє будь-якому юзеру відкрити чужий об'єкт. Класична broken-access-control проблема.
+`Model.findById(req.params.id)`, `Model.findByPk(req.body.id)`, `Model.findOne({ where: { id: req.query.id } })`, `prisma.x.findUnique({ where: { id } })` without a subsequent ownership check (`req.user.id === record.userId`) lets any authenticated user load any object by ID.
 
-**AST-сигнатура**:
-- `CallExpression` з `callee.name ∈ {findById, findByPk, findOne, findUnique, getById}`
-- argument містить `req.params|body|query` або `_id: req.*`
-- enclosing function body не містить `req.user|currentUser|isAdmin|hasRole|where: {...userId}` evidence.
+**Vulnerable**:
+```ts
+app.get('/orders/:id', async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  res.json(order);                                            // any user can read any order
+});
+```
 
-**Remediation**. `Order.findOne({ where: { id: req.params.id, userId: req.user.id } })` або explicit ownership check + 403 response. Cheat sheet: [OWASP Authorization](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html).
+**Safe**:
+```ts
+app.get('/orders/:id', async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order || order.userId !== req.user.id) return res.status(403).end();
+  res.json(order);
+});
+// Or push the check into the query:
+const order = await Order.findOne({ where: { id: req.params.id, userId: req.user.id } });
+```
+
+**Confidence guidance**: lookup by user-supplied id with no visible authz check is `LIKELY_TP`. If middleware-level authz exists in a different file (`requireOwnership`), prefer `NEEDS_HUMAN`. Public endpoints (lookup by slug, read-only public data) are safe.
+
+**Fix**: add ownership check inside handler or in shared middleware; bake the user filter into the query.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html>
+
+---
 
 ## B-12 — XXE (XML External Entity)
 
-**OWASP**: A05:2021 (Security Misconfiguration) **CWE**: CWE-611
+**OWASP** A05:2021 · **CWE** CWE-611 · **Severity** high
 
-**Опис**. `libxmljs.parseXml(userXml)` за замовчуванням розгортає external entities → читання файлів сервера (`/etc/passwd`), SSRF через `<!ENTITY foo SYSTEM "http://internal/...">`.
+XML parsers like `libxmljs`/`libxmljs2` with default options process external entities — attacker XML can read server files (`/etc/passwd`), make SSRF requests, or trigger billion-laughs DoS.
 
-**AST-сигнатура**:
-- `libxmljs(2)?.parseXml | parseXmlString | parseHtml(...)` без options `{noent:false, nonet:true, noblanks:true}`.
-- `xml2js.parseString(...)` без явних options (`explicitArray`, `explicitRoot`).
+**Vulnerable**:
+```ts
+const doc = libxmljs.parseXml(req.body.xml);                  // defaults allow entities
+const doc2 = libxmljs2.parseXmlString(payload);
+parseString(req.body.xml, (err, result) => { /* xml2js, defaults */ });
+```
 
-**Remediation**. `libxmljs.parseXml(xml, { noent: false, nonet: true, noblanks: true })`. Краще — JSON замість XML де можна. Cheat sheet: [OWASP XXE Prevention](https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html).
+**Safe**:
+```ts
+const doc = libxmljs.parseXml(req.body.xml, { noent: false, nonet: true, noblanks: true });
+// xml2js is safer by default (no entity expansion) but still validate:
+const parser = new xml2js.Parser({ explicitArray: false, explicitRoot: false });
+const result = await parser.parseStringPromise(req.body.xml);
+```
+
+**Confidence guidance**: libxmljs* parsing without explicit `{noent: false, nonet: true}` options is high TP. xml2js is medium — its defaults are mostly safe but still recommend validation. `sax` parser (event-driven) is generally safe.
+
+**Fix**: disable entity expansion and network access in the parser options; or move to JSON.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html>
+
+---
 
 ## B-13 — Mass assignment
 
-**OWASP**: A08:2021 (Software and Data Integrity Failures) **CWE**: CWE-915 (Improperly Controlled Modification of Dynamically-Determined Object Attributes)
+**OWASP** A08:2021 · **CWE** CWE-915 · **Severity** high
 
-**Опис**. `User.update(req.body)` дозволяє атакувальнику передати `{role: 'admin'}` або `{isVerified: true}` і підвищити привілеї. Те саме з `Object.assign(user, req.body)` чи `new Model({...req.body})`.
+ORM updates / creates that splat `req.body` into a model. The attacker can set fields they shouldn't — `role: 'admin'`, `isVerified: true`, `creditBalance: 999999`.
 
-**AST-сигнатура**:
-- `Object.assign(target, req.body)` де `target` НЕ `{}` (порожній — це prototype pollution = R-05).
-- `Model.update|create|save|insert|insertMany|upsert(req.body, ...)`.
-- `new Model({...req.body})` (spread у new).
+**Vulnerable**:
+```ts
+await User.update(req.body, { where: { id: req.user.id } });        // includes role, status, …
+const user = new User({ ...req.body });
+Object.assign(existingUser, req.body);
+await Account.create(req.body);
+```
 
-**Remediation**. Whitelist полів: `User.update({ name: req.body.name, email: req.body.email }, ...)`. Або DTO + валідатор (zod, class-validator).
+**Safe**:
+```ts
+const { name, email, bio } = req.body;
+await User.update({ name, email, bio }, { where: { id: req.user.id } });
+// Or use a DTO / schema validator that strips disallowed fields:
+const safe = z.object({ name: z.string(), email: z.string().email() }).parse(req.body);
+await User.update(safe, { where: { id: req.user.id } });
+```
+
+**Confidence guidance**: `Model.update|create|save(req.body)` is TP. `Object.assign({}, req.body)` is prototype pollution (R-05), not mass assignment. Explicit field destructuring is safe.
+
+**Fix**: whitelist allowed fields with explicit destructuring or schema validation; never trust the full body shape.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html>
+
+---
 
 ## B-14 — Server-side open redirect
 
-**OWASP**: A01:2021 (Broken Access Control — open redirect — A01 у 2021 відсутній окремо, мапиться на CWE-601) **CWE**: CWE-601
+**OWASP** A01:2021 · **CWE** CWE-601 · **Severity** medium
 
-**Опис**. `res.redirect(req.query.next)` дозволяє фішинг: `https://yourapp/login?next=https://evil.com` → юзер логіниться, його редіректить на evil.com (з referer токенами).
+`res.redirect(req.query.next)`, `res.location(req.body.target)`, including the 2-arg form `res.redirect(302, target)`. Same phishing risk as R-08 but server-side.
 
-**AST-сигнатура**:
-- `res|response.redirect(...userInput)` (включно з 2-arg формою `res.redirect(302, target)`).
-- `res|response.location(userInput)`.
+**Vulnerable**:
+```ts
+app.get('/login', (req, res) => {
+  // ...login logic...
+  res.redirect(req.query.next as string);                     // ?next=https://evil.com
+});
+res.redirect(302, req.body.returnTo);
+res.location(req.params.target).status(303).end();
+```
 
-**Remediation**. Whitelist дозволених URL prefixes; relative URL-only (`/dashboard`); HMAC-signed token вкладений у URL. Cheat sheet: [OWASP Unvalidated Redirects](https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html).
+**Safe**:
+```ts
+const ALLOW = new Set(['/dashboard', '/settings', '/home']);
+const next = String(req.query.next || '/dashboard');
+res.redirect(ALLOW.has(next) ? next : '/dashboard');
+// Or only allow relative paths:
+res.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
+```
+
+**Confidence guidance**: `res.redirect(req.X)` is TP. Hardcoded redirect targets are safe. HMAC-signed tokens in the URL parameter validate the redirect intent.
+
+**Fix**: allowlist target paths or hosts; relative-URL-only; HMAC-signed tokens.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html>
+
+---
 
 ## B-15 — Server-side template injection (SSTI)
 
-**OWASP**: A03:2021 (Injection) **CWE**: CWE-94 (Improper Control of Generation of Code)
+**OWASP** A03:2021 · **CWE** CWE-94 · **Severity** critical
 
-**Опис**. `res.render(req.body.template)` або `pug.compile(userTemplate)` — атакувальник передає шаблон з `{{constructor.constructor('return process')()}}` → RCE на сервері. SSTI = найкритичніша injection-вразливість після SQLi.
+`res.render(req.body.template)` lets the attacker pick the template — including path-traversal into other templates or invoking templates with side effects. Worse: `pug.compile(req.body.tpl)`, `handlebars.compile(req.X)`, `ejs.render(req.body.template)`, `mustache.render(req.X)` — the attacker can supply the *template body* and execute server-side JS via constructs like `{{constructor.constructor('return process')()}}`.
 
-**AST-сигнатура**:
-- `res|response.render(req.X, ...)` — template name/шлях з користувача.
-- `pug|handlebars|ejs|mustache|nunjucks|dot|liquidjs|hogan|swig|eta.compile|render|renderFile|renderString(req.X, ...)`.
+**Vulnerable**:
+```ts
+res.render(req.body.template, { user: req.user });
+const fn = pug.compile(req.body.tpl);
+const out = ejs.render(req.body.template, { items });
+const html = Handlebars.compile(req.query.template as string)({ user: req.user });
+```
 
-**Remediation**. Render тільки з whitelist шаблонів: `res.render('home', data)`. Ніколи не приймати template body з юзера. Cheat sheet: [PortSwigger SSTI](https://portswigger.net/web-security/server-side-template-injection).
+**Safe**:
+```ts
+res.render('profile', { user: req.user });                   // fixed template name
+const fn = pug.compileFile(path.join(__dirname, 'views', 'profile.pug'));
+const out = ejs.render(STATIC_TEMPLATE, { items });
+```
+
+**Confidence guidance**: any template engine `compile`/`render`/`renderFile`/`renderString` with first arg from `req.*` is critical TP. `res.render` with non-literal template name is TP.
+
+**Fix**: render only from a fixed set of templates; never accept template body or template name from a client.
+
+**Reference**: <https://portswigger.net/web-security/server-side-template-injection>
 
 ---
 
-# Docker / Container Rules — Detail
+# Container rules (D-XX)
 
 ## D-01 — Container runs as root
 
-**OWASP**: A05:2021 (Security Misconfiguration) **CWE**: CWE-250 (Execution with Unnecessary Privileges)
+**OWASP** A05:2021 · **CWE** CWE-250 · **Severity** high
 
-**Опис**. Без `USER` directive контейнер виконується від root. RCE у застосунку → root всередині контейнера → атаки на host (через kernel exploits, mounted volumes, network).
+A Dockerfile without a `USER` directive (or with `USER root`/`USER 0`) runs the entrypoint as root inside the container. An RCE in the application then has full filesystem access inside the container, can mutate the image, and is one kernel exploit away from host escape.
 
-**Сигнатура**: Dockerfile не містить `USER` directive, або останній `USER` — `root` чи `0`.
+**Vulnerable**:
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY . .
+RUN npm ci --omit=dev
+CMD ["node", "server.js"]
+# No USER — runs as root
+```
 
-**Remediation**. `RUN groupadd -r app && useradd -r -g app app && USER app`. Або use `USER node` у Node.js images.
+**Safe**:
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY . .
+RUN npm ci --omit=dev
+USER node                                                    # built-in non-root user on official Node images
+CMD ["node", "server.js"]
+```
 
-**CIS Benchmark**: 4.1 (Create a user for the container).
+**Confidence guidance**: missing `USER` is high TP. `USER 1000` (or any non-zero numeric/named user) is safe. Multi-stage builds need the final stage to set USER.
 
----
+**Fix**: add `USER <non-root>` before CMD/ENTRYPOINT. On Node official images, `USER node` is pre-created.
 
-## D-02 — Mutable `latest` tag у `FROM`
-
-**OWASP**: A06:2021 (Vulnerable and Outdated Components) **CWE**: CWE-1104
-
-**Опис**. `FROM node:latest` — тег рухомий: за час між builds на той же тег може потрапити інша версія з різною safety-баговістю. Невідтворювані builds, supply-chain ризик.
-
-**Сигнатура**: `FROM image:latest` АБО `FROM image` без тегу для канонічних public images (node/python/ubuntu/...). Allow-list: digest pinning `image@sha256:...`.
-
-**Remediation**. Pin до конкретного тегу: `FROM node:20.11.1-alpine3.19`. Краще — digest: `FROM node:20.11.1-alpine3.19@sha256:abc...`.
-
----
-
-## D-03 — Hardcoded secret у Dockerfile ENV/ARG
-
-**OWASP**: A07:2021 (Identification and Authentication Failures) **CWE**: CWE-798
-
-**Опис**. `ENV API_KEY=AKIA...` — секрет у image layer, доступний `docker history`, у registry, у логах CI.
-
-**Сигнатура**: `ENV` або `ARG` де ключ матчить `(API[_-]?KEY|SECRET|TOKEN|PASSWORD|PRIVATE[_-]?KEY|ACCESS[_-]?KEY|AUTH|JWT|CREDENTIAL)` і значення:
-- матчить known patterns (AWS AKIA, Google AIza, Stripe sk_live_, GitHub ghp_, JWT eyJ...) АБО
-- має ентропію ≥4 і довжину ≥20.
-
-**Remediation**. BuildKit secrets: `RUN --mount=type=secret,id=mykey ...`. Або runtime: `docker run -e API_KEY=$API_KEY`.
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html#rule-2---set-a-user>
 
 ---
 
-## D-04 — `ADD` для local files
+## D-02 — Mutable `latest` tag in FROM
 
-**OWASP**: A05:2021 **CWE**: CWE-829
+**OWASP** A06:2021 · **CWE** CWE-1104 · **Severity** medium
 
-**Опис**. `ADD` має побічні ефекти — auto-extract tarballs, fetch remote URLs з MITM-ризиками. `COPY` — простіший і передбачуваний.
+`FROM node:latest`, `FROM postgres:latest`, or `FROM ubuntu` (which defaults to `:latest`) — build output is not reproducible, and a malicious upstream tag swap silently ships compromised binaries.
 
-**Сигнатура**: `ADD` де source не URL і не tarball.
+**Vulnerable**:
+```dockerfile
+FROM node:latest
+FROM nginx
+```
 
-**Remediation**. Замінити на `COPY`. `ADD` — тільки для tarball auto-extract або URL fetch (з SHA-checksum).
+**Safe**:
+```dockerfile
+FROM node:20.11.1-alpine
+# Or pin by digest for absolute reproducibility:
+FROM node@sha256:a8e...
+```
 
-**Docker docs**: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#add-or-copy
+**Confidence guidance**: explicit `:latest` is TP. Missing tag (implicit `:latest`) is TP. Pinned numeric tags (`:20`, `:20.11`, `:20.11.1`) are safe — `:20` is loose but still better than `latest`. Digest pin is best.
+
+**Fix**: pin to a specific version tag, or use `image@sha256:...` digest.
+
+**Reference**: <https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html#rule-4---use-multi-stage-builds>
 
 ---
 
-## D-05 — `privileged: true` у docker-compose
+## D-03 — Hardcoded secret in Dockerfile ENV/ARG
 
-**OWASP**: A04:2021 (Insecure Design) **CWE**: CWE-250
+**OWASP** A07:2021 · **CWE** CWE-798 · **Severity** critical
 
-**Опис**. `privileged: true` дає контейнеру всі capabilities, доступ до всіх devices, відключає cgroup-обмеження. Container ≈ root на host.
+`ENV API_KEY=sk_live_...`, `ARG DB_PASSWORD=secret123`. These bake the secret into image layers — anyone with image access (registry pull, docker history) can extract them.
 
-**Сигнатура**: YAML рядок `^\s*privileged\s*:\s*true\s*$`.
+**Vulnerable**:
+```dockerfile
+ENV STRIPE_KEY=sk_live_51Hxxxxxxxxxxxxxxxxxxxxxx
+ARG DB_PASSWORD=Adm1nP@ss
+ENV JWT_SECRET=mysecret123
+```
 
-**Remediation**. Замість privileged — конкретні `cap_add: [SYS_TIME]`. Якщо потрібен access до GPU — `--gpus all` (Docker) або `runtimeClassName: nvidia` (k8s).
+**Safe**:
+```dockerfile
+# Don't set the secret at build time. Set it at runtime via:
+#   docker run -e STRIPE_KEY=... ...
+# Or use docker secrets / k8s secrets:
+ENV STRIPE_KEY=""   # placeholder, overridden at runtime
+```
+
+**Confidence guidance**: ENV/ARG with literal values that look like API keys, JWTs, or password strings are TP. Empty defaults (`ENV X=""`) and references like `ENV X=$SOMETHING` are safe.
+
+**Fix**: pass secrets at runtime via env, docker secrets, or a secret manager — never bake them into images.
+
+**Reference**: <https://docs.docker.com/build/building/secrets/>
 
 ---
 
-## D-06 — `network_mode: host`
+## D-04 — `ADD` for local files instead of `COPY`
 
-**OWASP**: A04:2021 **CWE**: CWE-668 (Exposure of Resource to Wrong Sphere)
+**OWASP** A05:2021 · **CWE** CWE-829 · **Severity** medium
 
-**Опис**. Container використовує network stack хоста — обходить Docker network isolation. Атакер у контейнері може sniff/spoof host traffic.
+`ADD` has side effects beyond `COPY`: auto-extracts tarballs, supports remote URLs. When used for plain local file copy, those side effects are unwanted — and an `ADD https://...` is unverified download into the image.
 
-**Сигнатура**: YAML рядок `^\s*network_mode\s*:\s*['"]?host['"]?\s*$`.
+**Vulnerable**:
+```dockerfile
+ADD package.json /app/
+ADD https://example.com/installer.sh /tmp/
+ADD some.tar.gz /opt/                                        # auto-extracts
+```
 
-**Remediation**. Default bridge network або custom network. Якщо потрібен зовнішній порт — `ports: [3000:3000]`.
+**Safe**:
+```dockerfile
+COPY package.json /app/
+# For remote files, fetch + verify checksum:
+RUN curl -fsSL https://example.com/installer.sh -o /tmp/installer.sh \
+  && echo "<sha256>  /tmp/installer.sh" | sha256sum -c
+# For tarballs you actually want extracted, ADD is OK but be deliberate.
+```
+
+**Confidence guidance**: `ADD <local-path>` for non-tarball local files is TP (use COPY). `ADD <url>` is TP unless followed by checksum verification. `ADD <tar>` for intentional auto-extract is FP.
+
+**Fix**: prefer `COPY` for local files; for remote downloads, use `RUN curl ... && verify-checksum`.
+
+**Reference**: <https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#add-or-copy>
+
+---
+
+## D-05 — `privileged: true` in docker-compose
+
+**OWASP** A04:2021 · **CWE** CWE-250 · **Severity** high
+
+`privileged: true` disables most container isolation — the container gets ALL kernel capabilities and direct device access. Effectively root on the host kernel namespace.
+
+**Vulnerable**:
+```yaml
+services:
+  app:
+    image: myapp
+    privileged: true
+```
+
+**Safe**:
+```yaml
+services:
+  app:
+    image: myapp
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]   # only what's actually needed
+    security_opt:
+      - no-new-privileges:true
+```
+
+**Confidence guidance**: `privileged: true` is unconditional TP. The (rare) legitimate cases (docker-in-docker, hardware access) should be obvious in context.
+
+**Fix**: drop `privileged`; add only the specific capabilities required via `cap_add`.
+
+**Reference**: <https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities>
+
+---
+
+## D-06 — `network_mode: host` in docker-compose
+
+**OWASP** A04:2021 · **CWE** CWE-668 · **Severity** high
+
+`network_mode: host` shares the host's network namespace — the container can bind any host port, read host network traffic, and bypass docker network isolation entirely.
+
+**Vulnerable**:
+```yaml
+services:
+  app:
+    image: myapp
+    network_mode: host
+```
+
+**Safe**:
+```yaml
+services:
+  app:
+    image: myapp
+    ports:
+      - "127.0.0.1:3000:3000"     # explicit, bind to loopback only if internal
+    networks:
+      - backend
+networks:
+  backend:
+    driver: bridge
+```
+
+**Confidence guidance**: `network_mode: host` is TP. `network_mode: bridge`/`none`/custom-network is safe. Default network is safe.
+
+**Fix**: use bridge networking with explicit port mappings; if you really need host networking (e.g. for a network monitor), isolate via separate compose file.
+
+**Reference**: <https://docs.docker.com/network/host/>
 
 ---
 
 ## D-07 — Mount of `/var/run/docker.sock`
 
-**OWASP**: A05:2021 **CWE**: CWE-732 (Incorrect Permission Assignment)
+**OWASP** A05:2021 · **CWE** CWE-732 · **Severity** critical
 
-**Опис**. Mount Docker socket дозволяє container керувати Docker daemon хоста — створювати привілейовані контейнери, mount root filesystem хоста, exfiltrate secrets з інших контейнерів. **Повний container escape**.
+Mounting `/var/run/docker.sock` into a container gives that container root-equivalent control over the host's Docker daemon — it can launch new privileged containers, mount host paths, exfiltrate other containers' data. Effectively container escape by design.
 
-**Сигнатура**: YAML рядок містить `/var/run/docker.sock`.
+**Vulnerable**:
+```yaml
+services:
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+```
 
-**Remediation**. Не монтувати docker.sock. Якщо потрібен Docker-in-Docker — використати `dind` rootless або socket proxy (Tecnativa/docker-socket-proxy) з обмеженими endpoints.
+**Safe**:
+```yaml
+# Don't mount the socket. If a workload truly needs Docker API access,
+# run it on the host (not in a container), or use a socket proxy like
+# tecnativa/docker-socket-proxy that limits API operations:
+services:
+  watchtower:
+    image: containrrr/watchtower
+    environment:
+      - DOCKER_HOST=tcp://docker-proxy:2375
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy
+    environment:
+      - CONTAINERS=1            # read-only container listing
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+**Confidence guidance**: any mount of `/var/run/docker.sock` is TP. Even read-only mounts grant significant capability — flag those as `LIKELY_TP`.
+
+**Fix**: remove the mount; use a socket proxy with restricted permissions if API access is truly needed.
+
+**Reference**: <https://docs.docker.com/engine/security/#docker-daemon-attack-surface>
 
 ---
 
-## D-08 — `apt-get install` без safety flags
+## D-08 — Unsafe `apt-get install` (no `--no-install-recommends`, no version pinning)
 
-**OWASP**: A06:2021 **CWE**: CWE-1104
+**OWASP** A06:2021 · **CWE** CWE-1104 · **Severity** low
 
-**Опис**. `apt-get install -y curl` без `--no-install-recommends` — bloats image (більше attack surface). Без `pkg=version` — не відтворюваний build, можна непомітно оновитись на vulnerable version.
+`RUN apt-get install -y curl` pulls latest versions of curl plus all "recommended" packages. Result: larger attack surface, non-reproducible builds.
 
-**Сигнатура**: `RUN` рядок містить `apt-get install` (або `apt install`) без `--no-install-recommends` І без `pkg=version` patterns.
+**Vulnerable**:
+```dockerfile
+RUN apt-get update && apt-get install -y curl wget vim
+```
 
-**Remediation**. `RUN apt-get update && apt-get install -y --no-install-recommends curl=7.81.0-1ubuntu1.16 && rm -rf /var/lib/apt/lists/*`.
+**Safe**:
+```dockerfile
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       curl=7.88.* \
+       ca-certificates=20230311 \
+  && rm -rf /var/lib/apt/lists/*
+```
+
+**Confidence guidance**: `apt-get install` without `--no-install-recommends` is TP-low. No version pinning is also TP-low. Combined → still low severity (defense-in-depth, not exploitable directly). Alpine `apk add --no-cache` is the equivalent best practice.
+
+**Fix**: add `--no-install-recommends`; pin versions for reproducibility; clean apt lists after install.
+
+**Reference**: <https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#apt-get>

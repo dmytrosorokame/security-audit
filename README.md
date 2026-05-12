@@ -9,15 +9,15 @@ Unlike file-based SAST (Semgrep, ESLint plugin-security), security-audit reads *
 
 - **No legacy noise.** Findings are attributable to *this* PR, not to whoever wrote the file three years ago.
 - **Semantic understanding.** The model sees intent. It can tell apart "added a sanitizer call" from "added an `eval(req.body)`", even when both touch identical lines.
-- **Cheap.** A 100-line diff costs ~$0.03 on Claude Sonnet 4.5 with prompt caching, or ~$0.005 on GPT-4o-mini. Full-repo LLM scan would be $50+.
+- **Cheap by design.** Diffs are small (typically 50–200 lines); prompt caching keeps grounding tokens warm across PRs. Full-repo LLM scan would be prohibitively expensive by comparison.
 
 **Provider-agnostic**: works with **Anthropic Claude** (Sonnet/Haiku/Opus) or **OpenAI GPT** (gpt-4o, gpt-4o-mini, o-series). Pick whichever you have an API key for; the same prompts, schema, and output formats apply.
 
 ## What it catches
 
-35 vulnerability patterns grounded in OWASP Top 10 (2021), covering:
+34 vulnerability patterns grounded in OWASP Top 10 (2021), covering:
 
-- **Frontend (12 rules)**: DOM XSS, prototype pollution, insecure token storage, open redirects, missing CSP/SRI, postMessage misuse, `dangerouslySetInnerHTML`, `target="_blank"` tabnabbing, hardcoded secrets, CORS misconfiguration.
+- **Frontend (11 rules)**: DOM XSS, prototype pollution, insecure token storage, open redirects, missing CSP/SRI, postMessage misuse, `dangerouslySetInnerHTML`, `target="_blank"` tabnabbing, hardcoded secrets, CORS misconfiguration. (Dependency-CVE scanning is out of scope — use Dependabot or Snyk for that.)
 - **Backend (15 rules)**: SQL injection (incl. ORM raw queries), command injection, NoSQL injection, SSRF across all HTTP clients (fetch/axios/got/undici/superagent/http.request), path traversal, unsafe deserialization, weak crypto, missing CSRF/Helmet, hardcoded credentials, IDOR, XXE, mass assignment, server-side open redirect, server-side template injection (SSTI).
 - **Container (8 rules)**: root user, latest tag, hardcoded secrets in ENV, `ADD` vs `COPY`, privileged compose service, host network, docker.sock mount, unsafe apt-get.
 
@@ -174,15 +174,22 @@ The detection layer is **purely deterministic in everything except the model cal
 
 Provider adapters live in `scripts/providers/`. Each implements one function — `analyze({groundingBlocks, userMessage, model, apiKey})` — and the dispatcher (`scripts/llm_analyze.mjs`) picks one based on `--provider` or which env key is set. Adding a third provider (e.g. Gemini) is ~120 lines and does not touch any other part of the pipeline.
 
-**Cost per 100-line PR** (input ~12K cached + ~3K uncached + ~500 output):
+**Per-run telemetry**. Every JSON report carries `cost`, `latency_ms`, and a `usage` block (input/output/cached tokens). Use these for your own pricing analysis — published cost figures will be added once we have measured benchmarks (see `benchmark/`).
 
-| Provider × Model | Cold cache | Warm cache |
+## Provider auto-detection
+
+When `--provider` is not specified, the tool picks from environment:
+
+| ANTHROPIC_API_KEY | OPENAI_API_KEY | Chosen provider |
 |---|---|---|
-| Anthropic Sonnet 4.5 | ~$0.05 | ~$0.02 |
-| Anthropic Haiku 4.5 | ~$0.015 | ~$0.005 |
-| OpenAI gpt-4o | ~$0.035 | ~$0.020 |
-| OpenAI gpt-4o-mini | ~$0.003 | ~$0.002 |
-| OpenAI o3-mini | ~$0.020 | ~$0.012 |
+| set | unset | **Anthropic** |
+| unset | set | **OpenAI** |
+| set | set | **Anthropic** (emits stderr notice) |
+| unset | unset | error: at least one key required |
+
+**Why Anthropic on tie**: explicit `cache_control` markers give roughly 90% cache-read discount on the ~12K stable grounding tokens, versus ~50% on OpenAI's automatic prefix cache. Once the cache is warm, that's a 2× cost difference for the same call. This is a heuristic about cost, not quality — both providers produce valid findings.
+
+**Override**: pass `--provider=openai`, or set `SECURITY_AUDIT_PROVIDER=openai`. The stderr notice is suppressed in non-interactive environments unless `SECURITY_AUDIT_DEBUG=1`.
 
 ## Configuration
 

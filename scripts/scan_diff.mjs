@@ -35,7 +35,8 @@ import { execFileSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 
 import { analyzeDiff } from './llm_analyze.mjs';
-import { validateReport, normalizeFinding } from './validate_finding.mjs';
+import { validateReport, validateFinding, normalizeFinding } from './validate_finding.mjs';
+import { applySuppression } from './suppression.mjs';
 import { formatReport as formatCli } from './format_cli.mjs';
 import { formatPrComment } from './format_pr_comment.mjs';
 import { formatSarif } from './format_sarif.mjs';
@@ -44,7 +45,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const EXTRACT_DIFF = path.join(__dirname, 'extract_diff.mjs');
 
-const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
+// `none` is a sentinel that never matches (Number.POSITIVE_INFINITY > every
+// finding's rank), so --fail-on=none means "report only, never block".
+const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4, none: Number.POSITIVE_INFINITY };
 
 function debug(...args) {
   if (process.env.SECURITY_AUDIT_DEBUG === '1') {
@@ -58,6 +61,23 @@ function runExtractDiff(args) {
     maxBuffer: 200 * 1024 * 1024,
   });
   return JSON.parse(out);
+}
+
+/**
+ * Find the git repo root from current cwd. Falls back to cwd if not in a repo.
+ * Used to locate .security-audit-ignore at repo root regardless of where the
+ * tool was invoked from.
+ */
+function findRepoRoot() {
+  try {
+    const out = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return out || process.cwd();
+  } catch {
+    return process.cwd();
+  }
 }
 
 function printHelp() {
@@ -81,7 +101,8 @@ LLM options:
 Output / filtering:
   --format=<fmt>           cli | pr | sarif | json (default: cli)
   --output=<file>          Write output to file (default: stdout)
-  --fail-on=<sev>          critical | high | medium | low | info (default: critical)
+  --fail-on=<sev>          critical | high | medium | low | info | none (default: critical)
+                           'none' means report findings but never block (exit 0).
   --context=<n>            Lines of context around hunks (default: 10)
   --include=<glob>         File include pattern (repeatable)
   --exclude=<glob>         File exclude pattern (repeatable)
@@ -208,14 +229,42 @@ async function main() {
 
   // === 3. Validate + normalize ===
   report.diff_stats = diffJson.stats;
+
+  // 3a. Drop hallucinated findings — file/line that don't exist in the diff.
+  //     Schema-malformed findings still pass through with warnings (LLMs
+  //     occasionally misformat severity casing, etc.), but anything we can't
+  //     anchor to a real diff line is removed outright.
+  const sane = [];
+  const hallucinated = [];
+  for (const f of report.findings || []) {
+    const r = validateFinding(f, { diff: diffJson });
+    const anchorErr = r.errors.find(e => e.startsWith("file '") || e.startsWith('line '));
+    if (anchorErr) {
+      hallucinated.push({ ...f, hallucination_reason: anchorErr });
+    } else {
+      sane.push(f);
+    }
+  }
+  report.findings = sane.map(normalizeFinding);
+  if (hallucinated.length > 0) {
+    report.hallucinated_findings = hallucinated;
+    debug(`dropped ${hallucinated.length} hallucinated findings`);
+  }
+
+  // 3b. Full schema validation — surface the rest as warnings.
   const validation = validateReport(report, { diff: diffJson });
   if (!validation.valid) {
     debug('validation errors:', validation.errors);
-    // Don't hard-fail on schema issues — annotate and continue. LLM occasionally
-    // returns slightly off-spec output; we still want to surface what we got.
     report._validation_warnings = validation.errors;
   }
-  report.findings = (report.findings || []).map(normalizeFinding);
+
+  // 3c. Apply suppression: inline `// security-audit-ignore: <rule>` and
+  //     repo-level .security-audit-ignore. Recomputes summary.
+  const repoRoot = findRepoRoot();
+  report = applySuppression(report, { diff: diffJson, repoRoot });
+  if (report.suppressed_findings?.length) {
+    debug(`suppressed ${report.suppressed_findings.length} findings`);
+  }
 
   // === 4. Emit ===
   emitReport(report, values);

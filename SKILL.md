@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Reviews git diffs (pull request, staged commit, or arbitrary diff text) for security vulnerabilities using an LLM (Claude via Anthropic, or GPT via OpenAI — configurable per-call) as the primary analyzer. Performs LLM-driven semantic analysis grounded in the OWASP Top 10 (2021) and CWE taxonomies. Detects client-side vulnerabilities (DOM XSS, prototype pollution, insecure token storage, open redirects, missing CSP/SRI, postMessage misuse, dangerous innerHTML), server-side vulnerabilities (SQL injection incl. ORM raw queries, command injection, NoSQL injection, SSRF across all HTTP clients, path traversal, unsafe deserialization, weak crypto, missing CSRF/Helmet, hardcoded credentials, IDOR, XXE, mass assignment, server-side open redirect, server-side template injection / SSTI), and container/deployment misconfigurations (root user, latest tag, hardcoded secrets in ENV, ADD vs COPY, privileged compose service, host network, docker.sock mount, unsafe apt-get). Unlike file-based SAST tools, this skill focuses on the changeset itself — it sees only what is being added, modified, or removed in a diff, which eliminates legacy-code noise and lets the LLM reason about the intent of the change. Maps each finding to an OWASP Top 10 (2021) category and a CWE ID, computes a CVSS-like risk score (0-10), assigns a verdict (TRUE_POSITIVE / LIKELY_TP / NEEDS_HUMAN / FALSE_POSITIVE), and produces output in multiple formats (markdown PR comment, SARIF 2.1.0, CLI JSON). Use when the user asks to audit, review, scan, or check the security of a pull request, a commit, a diff, or recent code changes. Trigger phrases include "review this PR", "audit this commit", "security review on diff", "check this changeset for vulnerabilities", "is this PR safe to merge", "scan staged changes", "OWASP review of my branch". Implemented as a Node.js agent that extracts diffs via `git diff`, dispatches to a provider adapter (`scripts/providers/anthropic.mjs` using the Anthropic SDK with prompt-caching, or `scripts/providers/openai.mjs` using the OpenAI SDK with JSON-object response mode and automatic prefix caching), validates structured JSON output against a schema, and formats results for the chosen output channel. Grounding knowledge lives in `references/owasp-rules.md` (35 vulnerability patterns), `references/owasp-mapping.md` (OWASP→CWE), and `references/report-schema.md` (output schema). Optimized for TypeScript/JavaScript/TSX/JSX/Dockerfile/docker-compose stacks.
+description: Reviews a git diff (pull request, staged commit, or arbitrary unified diff) for security vulnerabilities. Returns structured findings mapped to OWASP Top 10 (2021) and CWE, each with severity, confidence, evidence, risk score (0–10), verdict (TRUE_POSITIVE / LIKELY_TP / NEEDS_HUMAN / FALSE_POSITIVE), and remediation. Covers XSS, SQL/NoSQL/command injection, SSRF, IDOR, XXE, SSTI, mass assignment, prototype pollution, insecure storage, open redirects, missing CSP/CSRF/Helmet, weak crypto, hardcoded secrets, and Docker/compose misconfigurations. Unlike file-based SAST, it reads only the changed lines so it ignores legacy noise and reasons about the intent of the change. Use when the user asks to audit, review, or check the security of a PR, a commit, a branch, or a diff — e.g. "review this PR", "is this safe to merge", "scan my staged changes", "OWASP review". Node.js agent (`scripts/scan_diff.mjs`) running on TypeScript/JavaScript/TSX/JSX/Dockerfile/docker-compose with pluggable LLM providers (Anthropic Claude or OpenAI GPT).
 ---
 
 # Security Audit Skill — diff-mode LLM agent
@@ -70,7 +70,7 @@ Dispatcher (`scripts/llm_analyze.mjs`) обирає провайдер з `--pro
 Кожен провайдер отримує:
 
 1. **System prompt** (`prompts/system.md`) — OWASP/CWE framework + правила для аналізу diff
-2. **References** — інлайн вміст `references/owasp-rules.md` (catalog 35 patterns) і `references/owasp-mapping.md`
+2. **References** — інлайн вміст `references/owasp-rules.md` (catalog 34 patterns) і `references/owasp-mapping.md`
 3. **Few-shot** (`prompts/few_shot.md`) — 3-5 input/output прикладів для format consistency
 4. **User message** — extracted diff JSON
 
@@ -135,7 +135,7 @@ security-audit/
     format_cli.mjs                  ← terminal output
     risk_score.mjs                  ← CVSS-like risk score
   references/
-    owasp-rules.md                  ← 35 vulnerability patterns (LLM grounding)
+    owasp-rules.md                  ← 34 vulnerability patterns (LLM grounding, no AST artifacts)
     owasp-mapping.md                ← OWASP→CWE map
     report-schema.md                ← finding JSON schema
   ci/
