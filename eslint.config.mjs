@@ -18,6 +18,7 @@ export default [
         clearInterval: 'readonly',
         AbortController: 'readonly',
         URL: 'readonly',
+        fetch: 'readonly',
       },
     },
     rules: {
