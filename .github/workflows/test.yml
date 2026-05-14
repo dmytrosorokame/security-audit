@@ -42,3 +42,60 @@ jobs:
           node scripts/format_cli.mjs --input=/tmp/mock.json --no-color
           node scripts/format_pr_comment.mjs --input=/tmp/mock.json
           node scripts/format_sarif.mjs --input=/tmp/mock.json
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: eslint
+        run: pnpm lint
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: vitest run
+        run: pnpm test:unit
+      - name: vitest coverage
+        run: pnpm test:coverage
+      - name: upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  benchmark-dry-run:
+    # Smoke-runs the benchmark harness with --dry-run (no API calls). Verifies
+    # that ground-truth JSON files parse, scan_diff CLI plumbing is intact,
+    # and the classifier doesn't crash on malformed responses. Real benchmark
+    # numbers go through benchmark.yml (manual trigger).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: benchmark harness sanity check
+        run: |
+          node benchmark/run_benchmark.mjs --dry-run --no-write --min-f1-strict=0 --min-f1-loose=0

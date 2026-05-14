@@ -1,0 +1,95 @@
+name: benchmark
+
+# The benchmark job calls real LLM APIs and costs money, so we don't run it
+# on every PR. Triggers:
+#   - workflow_dispatch: manual trigger from the Actions tab
+#   - schedule:           weekly cron (Sundays 02:00 UTC) so we catch drift
+#                         from provider model updates
+#   - push to main:       when ground-truth or scan code changes
+#
+# Requires OPENAI_API_KEY (or ANTHROPIC_API_KEY) in repo secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'LLM provider (auto/anthropic/openai)'
+        required: false
+        default: 'openai'
+      model:
+        description: 'Model alias or id (e.g. cheap, sonnet, gpt-4o-mini)'
+        required: false
+        default: 'cheap'
+      seeds:
+        description: 'Runs per case'
+        required: false
+        default: '1'
+  schedule:
+    - cron: '0 2 * * 0'
+  push:
+    branches: [main]
+    paths:
+      - 'benchmark/expected/**'
+      - 'scripts/**'
+      - 'prompts/**'
+      - 'references/**'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+
+      - name: run benchmark
+        id: bench
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SECURITY_AUDIT_DEBUG: '1'
+        run: |
+          PROVIDER="${{ github.event.inputs.provider || 'openai' }}"
+          MODEL="${{ github.event.inputs.model || 'cheap' }}"
+          SEEDS="${{ github.event.inputs.seeds || '1' }}"
+          node benchmark/run_benchmark.mjs \
+            --provider="$PROVIDER" \
+            --model="$MODEL" \
+            --seeds="$SEEDS" \
+            --timeout=120 \
+            --cache-dir=.security-audit-cache \
+            --min-f1-strict=0.6 \
+            --min-f1-loose=0.8 \
+            > /tmp/bench.md
+
+      - name: upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark/results.md
+            /tmp/bench.md
+          retention-days: 90
+
+      # On scheduled / manual runs, commit refreshed results.md so the
+      # repository shows the latest numbers without manual intervention.
+      - name: commit results (scheduled / dispatch only)
+        if: github.event_name != 'push' && always()
+        run: |
+          if [ -n "$(git status --porcelain benchmark/results.md)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add benchmark/results.md
+            git commit -m "ci: refresh benchmark/results.md [skip ci]"
+            git push
+          fi

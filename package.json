@@ -47,10 +47,22 @@
     "scan": "node scripts/scan_diff.mjs",
     "extract": "node scripts/extract_diff.mjs",
     "benchmark": "node benchmark/run_benchmark.mjs",
-    "test:smoke": "node scripts/scan_diff.mjs --help"
+    "test": "npm run lint && npm run test:unit && npm run test:smoke",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:smoke": "node scripts/scan_diff.mjs --help > /dev/null && node benchmark/run_benchmark.mjs --dry-run --no-write --min-f1-strict=0 --min-f1-loose=0 > /dev/null",
+    "lint": "eslint scripts/ benchmark/ --max-warnings=0",
+    "lint:fix": "eslint scripts/ benchmark/ --fix"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
     "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.39.4",
+    "vitest": "^2.1.8"
   }
 }
