@@ -11,9 +11,11 @@ export default defineConfig({
       include: ['scripts/**/*.mjs'],
       exclude: [
         'scripts/__tests__/**',
-        'scripts/scan_diff.mjs',           // CLI orchestrator — hard to unit-test
-        'scripts/providers/anthropic.mjs', // SDK wrapper — needs SDK mocks
-        'scripts/providers/openai.mjs',    // SDK wrapper — needs SDK mocks
+        'scripts/scan_diff.mjs',            // CLI orchestrator — hard to unit-test
+        'scripts/providers/anthropic.mjs',  // SDK wrapper — needs SDK mocks
+        'scripts/providers/openai.mjs',     // SDK wrapper — needs SDK mocks
+        'scripts/collect_oss_diffs.mjs',    // gh-CLI integration — out-of-band integration test
+        'scripts/collect_oss_diffs_api.mjs',// REST-API integration — same
       ],
       reporter: ['text', 'lcov', 'html'],
       thresholds: {
