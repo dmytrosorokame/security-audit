@@ -67,6 +67,24 @@ node scripts/label_cve_corpus.mjs --corpus=benchmark/cve_corpus/
 
 When stage 2 lands, the benchmark report grows a third corpus column (`benchmark/cve_corpus/`) and two extra rows in the generalisation gap section. Headline F1 in README.md becomes a triple: smoke / independent / CVE-raw.
 
+## Measured failure modes (complex corpus, cycle-5)
+
+After two improvement cycles on the prompt + few-shot, three cases remain FN/Partial on the complex corpus. We measured each on both `gpt-4o-mini` (default) and `gpt-4o` (35× cost, $0.06/call) — **same outcome on both**, so this is a cognitive gap of the diff-only architecture, not a model-size issue:
+
+| Case | Failure mode | Root cause | Defendable on defence? |
+|---|---|---|---|
+| c02 — DOMPurify `ADD_TAGS: ['script']` | FN | Model sees `DOMPurify.sanitize()` is still called and short-circuits self-critique step 3 ("is there a guard?") with YES. The configuration argument (`ADD_TAGS:['script']` defeats the protection) is not recognised as a relaxation. System-prompt rule 12 ("config changes on a security mechanism are always security-relevant") added in round-2 did not move the needle for gpt-4o-mini *or* gpt-4o. | Yes — documents the limitation of structural pattern matching vs semantic configuration analysis. |
+| c03 — `router.use('/items/:id', requireOwner)` removed, replaced by per-route guard on PUT only | FN | The removal is visible in the diff (a deleted `router.use` line). What is NOT in the diff is the surrounding **other routes** in the same file (GET on the same path) that previously inherited the protection. Diff-only context omits exactly the evidence needed to reason about this regression. `--include-file-context` is the architectural mitigation. | Yes — direct illustration of ADR-001's documented trade-off. |
+| c04 — Stripe key as env-fallback default in `config.ts` | Partial (was) → TP (now, after accept_alternatives) | Catalog overlap: R-07 (hardcoded secrets / API keys) and B-10 (hardcoded credentials in connection string) and B-07 (weak crypto / hardcoded JWT secret) all plausibly apply to a server-side Stripe live key. The benchmark now accepts any of the three with `accept_alternatives`, and system-prompt rule 13 documents the catalog disambiguation. | Partially — admits that the catalog has overlapping rule definitions; round-3 work to split B-07 into "weak crypto algo" and "hardcoded crypto secret" would clean this up. |
+
+These three are the **persistent failure modes**. The honest read is:
+
+- **One is a cognitive gap of LLM-SAST writ large** (c02): no amount of prompt tweaking will get a model to override its "the protection is called, therefore there is protection" prior unless the configuration analysis is offloaded to a deterministic AST pass — which ADR-002 explicitly rejected. This is the principled limitation of the architecture.
+
+- **One is the documented ADR-001 trade-off** (c03): diff-only context is too narrow to reason about middleware-inheritance regressions; `--include-file-context` exists as the operator-controlled mitigation.
+
+- **One is catalog overlap** (c04): tractable, scheduled for a catalog refactor.
+
 ## Comparison with prior art
 
 | Stage | Corpus type | Bias | What it proves |

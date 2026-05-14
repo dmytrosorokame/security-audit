@@ -107,6 +107,20 @@ If the diff has **no security issues**, return `{"schema_version": "1.0", "findi
 
 11. **Refactor that PRESERVES a vulnerability** (just moves it): generally don't report (it's pre-existing). Exception: if the move makes the issue meaningfully worse (e.g., broadens the attack surface). Use `NEEDS_HUMAN` and explain in `rationale`.
 
+12. **Configuration changes to a security mechanism are ALWAYS security-relevant.** This rule has bite — the model's most common FN is to see that a sanitiser, allowlist, middleware, or validator is *still being called* and stop the analysis there. Look at the **arguments** to the call, not just the call name. Specifically:
+    - `DOMPurify.sanitize(x, { ADD_TAGS / ADD_ATTR / ALLOWED_* / FORBID_* })` — investigate the option values; `ADD_TAGS: ['script']` or `ADD_ATTR: ['onerror', 'onload']` makes the call **worse than no sanitisation** because it pretends to protect.
+    - Express `app.use(helmet({...}))` with `contentSecurityPolicy: false` or `hsts: false` — defeats the protection.
+    - Validator libraries called with `{ skip: [...] }` or `disable: [...]` lists.
+    - Homemade `sanitize`/`escape`/`clean` redefined as identity (`(s) => s`).
+    - Middleware moved from a parent router group to a single route (e.g. `router.use('/items/:id', requireOwner)` → `router.put('/items/:id', requireOwner, ...)`) — the sibling routes lose protection.
+    Emit at least a `LIKELY_TP` finding pointing at the configuration change; never let the bare presence of a sanitiser/middleware call deflect the analysis.
+
+13. **Server-side hardcoded secrets (Stripe keys, AWS keys, JWT signing secrets in code or env defaults) are R-07 / B-10 / B-07** depending on emphasis:
+    - In a `config.ts` / `env`-fallback default: prefer **R-07** (treats it as a hardcoded API key — even though the catalog title says "frontend", the rule's body covers any embedded credential).
+    - In a database / message-broker connection string: **B-10**.
+    - In crypto code (`jwt.sign(token, "literal-secret")`, MD5 password hashing): **B-07**.
+    When two of these overlap (e.g. a Stripe key as an env-fallback default), pick R-07 and mention the overlap in `non_security_observations`. **Do not** pick `B-07` for a Stripe key — that's a hardcoded API key, not a crypto-algorithm choice.
+
 # Self-critique pass (mandatory, run before emitting JSON)
 
 Before you finalise the `findings` array, perform a silent second pass over every candidate finding. Ask yourself, one finding at a time:
