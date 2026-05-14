@@ -81,7 +81,7 @@ Provider-specific details:
 Temperature: 0 for reproducibility.
 
 Default models:
-- anthropic → `claude-sonnet-4-5` (alias `sonnet`); use `--model=haiku` for cheaper runs
+- anthropic → `claude-sonnet-4-6` (alias `sonnet`); pin `--model=sonnet-4-5` for reproducibility against cycle-6 numbers, or `--model=haiku` for cheaper runs
 - openai → `gpt-4o` (alias `best`); use `--model=cheap` for gpt-4o-mini
 
 Output: normalised JSON `{ schema_version, findings: [...], summary, provider, model, cost, latency_ms, usage }`.

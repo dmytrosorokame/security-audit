@@ -1,6 +1,6 @@
 # Evaluation metrics and methodology
 
-This document defines **how we measure success** for security-audit. It is the operational counterpart to the F1 numbers in `artifacts/f1_table.md` — what those numbers mean, how they are computed, and what they can and cannot claim.
+This document defines **how we measure success** for security-audit. It is the operational counterpart to the F1 numbers in `benchmark/results.md` (and the thesis-side rollup `f1_table.md`, which lives in the diploma appendix and is not committed to this repository) — what those numbers mean, how they are computed, and what they can and cannot claim.
 
 ## Primary metrics
 

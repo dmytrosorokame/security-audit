@@ -79,7 +79,7 @@ These are research-grade claims, but **the empirical evidence is currently limit
 - We do **not** claim our calibration mechanism is empirically validated — only that it is mechanically sound; the evidence will come from an extended benchmark.
 - We do **not** claim recall on vulnerability classes outside the catalog — A09 is excluded by design; A06 dependency CVEs are out of scope; business-logic and protocol-level flaws are likely missed.
 
-## Reading list (full bibliography lives in `artifacts/sources.md`)
+## Reading list (full bibliography lives in the diploma appendix `sources.md`, not committed to this repository)
 
 The four references most worth reading for someone evaluating this project:
 

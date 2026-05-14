@@ -29,7 +29,7 @@ A companion repo, [`dmytrosorokame/security-audit-demo`](https://github.com/dmyt
 | 8 | [demo/08-fp-suppress](https://github.com/dmytrosorokame/security-audit-demo/pull/8) | Admin cron with raw-SQL template literal that looks like B-01 but is sourced from module constants; inline `// security-audit-ignore: B-01` directive present | (B-01 suppressed) | TP→Suppressed |
 
 **Local benchmark (smoke corpus, n=9 cases inside `benchmark/expected/`):** strict F1 = **0.909**, loose F1 = 0.909 (one persistent FN on `04_idor_ambiguous` at `seeds=1`, single-seed instability — see [`docs/INDEPENDENT_VALIDATION.md`](./docs/INDEPENDENT_VALIDATION.md)).
-**Cross-corpus picture (cycle 6, gpt-4o-mini, seeds=1):** smoke 0.909 → independent 1.000 → complex 0.727 → oss_pilot 21% FP rate (TN-only). Full breakdown in [`benchmark/results.md`](./benchmark/results.md) and [`artifacts/f1_table.md`](../artifacts/f1_table.md).
+**Cross-corpus picture (cycle 6, gpt-4o-mini, seeds=1):** smoke 0.909 → independent 1.000 → complex 0.727 → oss_pilot 21% FP rate (TN-only). Full breakdown in [`benchmark/results.md`](./benchmark/results.md). A consolidated thesis-side rollup (`f1_table.md`) lives in the diploma appendix and is not committed to this repository — see `docs/INDEPENDENT_VALIDATION.md` for the validity threats and Stage 2 plan.
 
 This is a regression-detection benchmark, not an unbiased generalisability measurement: the same author wrote both the rule catalog and the smoke diffs, three of ten few-shot examples mirror smoke cases 01/04/05, and all four corpora are single-author labelled with no inter-annotator agreement measured. Run `node benchmark/run_benchmark.mjs --seeds=3` against your own corpus before drawing conclusions.
 

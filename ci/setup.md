@@ -8,7 +8,7 @@ Provider is selected automatically based on which env var / GitHub secret is set
 
 | Provider | Default model | Cheapest model | Cache discount | Best for |
 |---|---|---|---|---|
-| Anthropic | `claude-sonnet-4-5` (`sonnet`) | `claude-haiku-4-5` (`haiku`) | ~90% (5-min TTL) | Highest cache savings; strong JSON discipline via prompt |
+| Anthropic | `claude-sonnet-4-6` (`sonnet`) | `claude-haiku-4-5` (`haiku`) | ~90% (5-min TTL) | Highest cache savings; strong JSON discipline via prompt |
 | OpenAI | `gpt-4o` (`best`) | `gpt-4o-mini` (`cheap`) | ~50% (auto prefix cache) | Cheapest cold-cache runs; strict JSON mode via `response_format` |
 
 You can use both — set both env vars and pass `--provider=anthropic` or `--provider=openai` per call.

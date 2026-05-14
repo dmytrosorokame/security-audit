@@ -11,7 +11,7 @@ _Generated: 2026-05-14T10:20:22.437Z (smoke / independent / complex), 2026-05-14
 > ⚠️  The `benchmark/expected/` corpus is **curated by the same author who wrote the catalog** and serves only as a smoke / regression set. Three of the ten few-shot examples in `prompts/few_shot.md` are structurally identical to smoke cases 01/04/05, so smoke F1 is an upper bound, not a generalisability claim.
 > The `benchmark/independent_corpus/` corpus reproduces patterns from publicly disclosed CVE families and was not used to design the catalog.
 > The `benchmark/complex_corpus/` corpus tests multi-file / compositional diffs — the realistic PR shape.
-> The `benchmark/oss_pilot/` corpus contains 19 real merged PRs from public OSS repos with **provisional-TN** ground truth (`unlabeled: true`). Diffs and labels are **not committed** to the repo (upstream license terms vary — see `benchmark/oss_pilot/README.md` §Ethics); reproduce locally with `node scripts/collect_oss_diffs_api.mjs --per-repo=2`. The F1 is not defined for a TN-only corpus; the meaningful metric is FP rate. Auto-rollup of OSS pilot is not yet wired into the runner — numbers below come from a manual sweep documented in [`artifacts/oss_pilot_results.md`](../../artifacts/oss_pilot_results.md).
+> The `benchmark/oss_pilot/` corpus contains 19 real merged PRs from public OSS repos with **provisional-TN** ground truth (`unlabeled: true`). Diffs and labels are **not committed** to the repo (upstream license terms vary — see `benchmark/oss_pilot/README.md` §Ethics); reproduce locally with `node scripts/collect_oss_diffs_api.mjs --per-repo=2`. The F1 is not defined for a TN-only corpus; the meaningful metric is FP rate. Auto-rollup of OSS pilot is not yet wired into the runner — numbers below come from a manual sweep documented in the diploma appendix (`oss_pilot_results.md`, not committed to this repository).
 >
 > Report all four numbers separately — the gaps between them are the honest indicator of generalisability.
 
@@ -79,7 +79,7 @@ _Generated: 2026-05-14T10:20:22.437Z (smoke / independent / complex), 2026-05-14
 |------|----|----|----|----|-----------|--------|----|---------|
 | Manual sweep (cycle 6) | 0 | 4 | 0 | 15 | n/a | n/a | n/a (TN-only) | **21%** |
 
-Four FPs broken down in [`artifacts/oss_pilot_results.md`](../../artifacts/oss_pilot_results.md) (in the project root, alongside the report): 1 hallucinated SSRF on a pure-formatting PR, 2 over-eager NoSQL-injection on mongoose internal `$`-operator API surface (operator-as-data confusion), 1 wrong-class on a koa middleware refactor.
+Four FPs broken down in the diploma appendix (`oss_pilot_results.md`, not committed to this repository): 1 hallucinated SSRF on a pure-formatting PR, 2 over-eager NoSQL-injection on mongoose internal `$`-operator API surface (operator-as-data confusion), 1 wrong-class on a koa middleware refactor.
 
 ## Generalisation gaps
 

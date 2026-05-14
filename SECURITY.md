@@ -89,7 +89,7 @@ Known limitation: a sufficiently sophisticated injection might convince the mode
 - The tool requires a paid third-party LLM API key. The API provider sees the diff content.
 - The OWASP A09 category (logging & monitoring failures) is operational, not code-level, and is intentionally not covered.
 - Dependency-CVE scanning is out of scope — use Dependabot / Snyk / OSV-Scanner.
-- The 5 reference PRs in `examples/` are curated by the maintainer. They are a smoke benchmark, not an independent generalisability measurement (see `benchmark/results.md`).
+- The 9 reference diffs in `examples/` are curated by the maintainer. They are a smoke benchmark, not an independent generalisability measurement (see `benchmark/results.md` and `docs/INDEPENDENT_VALIDATION.md`).
 
 ---
 
