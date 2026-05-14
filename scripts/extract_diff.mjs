@@ -28,7 +28,6 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
 import { parseArgs } from 'node:util';
 
 const DEFAULT_EXCLUDES = [
@@ -75,9 +74,11 @@ function resolveBaseRef(base) {
 /**
  * Parse unified diff text into structured form.
  *
- * Returns: [{ path, old_path, status, hunks: [{old_start, old_lines, new_start, new_lines, content}] }]
+ * @param {string} text — output of `git diff --unified=N` or an external `.diff` file
+ * @returns {Array<{path: string|null, old_path: string|null, status: string,
+ *   hunks: Array<{old_start: number, old_lines: number, new_start: number, new_lines: number, content: string}>}>}
  */
-function parseUnifiedDiff(text) {
+export function parseUnifiedDiff(text) {
   if (!text || !text.trim()) return [];
 
   const files = [];
@@ -162,15 +163,26 @@ function parseUnifiedDiff(text) {
 }
 
 /**
- * Glob-style match. Lightweight (no minimatch dep).
- * Supports: *, **, single-char ?, {a,b} alternatives.
+ * Convert a gitignore/minimatch-style glob to a JavaScript regex.
+ * Supports: `*` (single segment), `**` (any depth), `?` (one non-slash),
+ * `{a,b}` alternation. Used by include/exclude file filtering.
+ *
+ * @param {string} glob
+ * @returns {RegExp}
  */
-function globToRegex(glob) {
+export function globToRegex(glob) {
   let re = '^';
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i];
     if (c === '*') {
-      if (glob[i + 1] === '*') {
+      if (glob[i + 1] === '*' && glob[i + 2] === '/') {
+        // `**/` must match zero or more path segments. The naive `.*\/`
+        // expansion forces at least one leading char + slash, which means
+        // `**/foo` would miss top-level `foo` — exactly the gitignore-like
+        // behaviour users expect. Group as optional to recover that case.
+        re += '(?:.*\\/)?';
+        i += 2;
+      } else if (glob[i + 1] === '*') {
         re += '.*';
         i++;
       } else {
@@ -197,11 +209,11 @@ function globToRegex(glob) {
   return new RegExp(re);
 }
 
-function matchesAnyGlob(filePath, globs) {
+export function matchesAnyGlob(filePath, globs) {
   return globs.some(g => globToRegex(g).test(filePath));
 }
 
-function filterFiles(files, includes, excludes) {
+export function filterFiles(files, includes, excludes) {
   return files.filter(f => {
     if (!f.path) return false;
     if (matchesAnyGlob(f.path, excludes)) return false;
@@ -210,7 +222,7 @@ function filterFiles(files, includes, excludes) {
   });
 }
 
-function computeStats(files) {
+export function computeStats(files) {
   let lines_added = 0;
   let lines_removed = 0;
   for (const f of files) {
@@ -249,6 +261,7 @@ function main() {
       context: { type: 'string', default: '10' },
       include: { type: 'string', multiple: true, default: [] },
       exclude: { type: 'string', multiple: true, default: [] },
+      'include-file-context': { type: 'boolean', default: false },
       'max-files': { type: 'string', default: '50' },
       help: { type: 'boolean', default: false },
     },
@@ -279,6 +292,41 @@ function main() {
     files = files.slice(0, maxFiles);
   }
 
+  // --include-file-context: attach the full new-side content of each modified
+  // file. Useful when a vulnerability depends on state defined outside the
+  // hunk's surrounding context (e.g. a sanitizer imported but not called in
+  // the diff). For binary / deleted files we skip the read.
+  if (values['include-file-context']) {
+    if (mode === 'file') {
+      // External `.diff` files have no associated git tree we can resolve, so
+      // there's nothing to fetch full file content from. Warn explicitly so a
+      // user who set the flag understands why their prompt isn't enlarged.
+      process.stderr.write(
+        'extract_diff: --include-file-context has no effect with --diff=<file> ' +
+        '(no git tree available). Use --against=<ref> or --staged instead.\n'
+      );
+    } else {
+      for (const f of files) {
+        if (!f.path) continue;
+        if (f.status === 'binary' || f.status === 'deleted') continue;
+        try {
+          // For staged mode we read the index version (`:path`); otherwise HEAD.
+          const ref = mode === 'staged' ? `:${f.path}` : `HEAD:${f.path}`;
+          const content = runGit(['show', ref]);
+          // Cap full-file context to keep prompt size sane on huge files. The
+          // model rarely needs more than ~12K chars (~3K tokens) of surrounding
+          // context to disambiguate; bigger files just balloon the prompt.
+          const MAX_FILE_CHARS = 12_000;
+          f.full_content = content.length > MAX_FILE_CHARS
+            ? content.slice(0, MAX_FILE_CHARS) + `\n... [truncated ${content.length - MAX_FILE_CHARS} chars]`
+            : content;
+        } catch {
+          // New file or git can't resolve — skip silently rather than fail.
+        }
+      }
+    }
+  }
+
   const stats = computeStats(files);
 
   const out = {
@@ -294,4 +342,4 @@ function main() {
   process.stdout.write(JSON.stringify(out, null, 2) + '\n');
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) main();

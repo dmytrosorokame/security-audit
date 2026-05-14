@@ -18,14 +18,21 @@
  *   node llm_analyze.mjs --list-models    # show what each provider knows
  */
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { buildGroundingBlocks, buildUserMessage, ProviderError, envBool } from './providers/_common.mjs';
+import { redactSecrets } from './validate_finding.mjs';
 import * as anthropic from './providers/anthropic.mjs';
 import * as openai from './providers/openai.mjs';
+
+// Cache entries older than this are treated as missing. 24h is long enough to
+// span a working session (so re-runs while iterating on suppressions are free)
+// but short enough that grounding catalog changes propagate within a day.
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,12 +115,14 @@ export function pickProvider(explicit) {
  * Core analyzer. Builds grounding payload once, then asks the chosen provider
  * to call the LLM. Returns a normalized report with provider/model/cost meta.
  *
- * @param {Object} diffJson           — output of extract_diff.mjs
+ * @param {Object} diffJson            — output of extract_diff.mjs
  * @param {Object} [options]
- * @param {string} [options.provider] — 'anthropic' | 'openai' | 'auto'
- * @param {string} [options.model]    — alias or exact model id (passed to provider)
- * @param {string} [options.apiKey]   — overrides env (provider-specific)
- * @param {boolean} [options.dryRun]  — skip API call, return assembled prompt summary
+ * @param {string} [options.provider]   — 'anthropic' | 'openai' | 'auto'
+ * @param {string} [options.model]      — alias or exact model id (passed to provider)
+ * @param {string} [options.apiKey]     — overrides env (provider-specific)
+ * @param {boolean} [options.dryRun]    — skip API call, return assembled prompt summary
+ * @param {number}  [options.timeoutMs] — abort LLM call after N ms (0 = no timeout)
+ * @param {string|null} [options.cacheDir] — file-based cache directory; null disables
  */
 export async function analyzeDiff(diffJson, options = {}) {
   const grounding = loadGroundingDocs();
@@ -142,20 +151,123 @@ export async function analyzeDiff(diffJson, options = {}) {
   }
 
   const provider = pickProvider(options.provider);
+
+  // === Cache lookup (file-based) ============================================
+  // Cache key = sha256(provider.NAME | model | grounding_hash | userMessage).
+  // grounding_hash captures system prompt + catalog + mapping + few-shot so any
+  // edit to those invalidates all prior results. The diff text is in
+  // userMessage so different PRs hit different keys.
+  const cacheKey = options.cacheDir
+    ? computeCacheKey(provider.NAME, provider.resolveModel(options.model), groundingBlocks, userMessage)
+    : null;
+  if (options.cacheDir && cacheKey) {
+    const hit = readCache(options.cacheDir, cacheKey);
+    if (hit) {
+      return {
+        ...hit,
+        tool: { name: TOOL_NAME, version: TOOL_VERSION },
+        scanned_at: new Date().toISOString(),
+        cache_hit: true,
+        cost: hit.cost_usd ?? hit.cost ?? 0,
+      };
+    }
+  }
+
   const result = await provider.analyze({
     groundingBlocks,
     userMessage,
     model: options.model,
     apiKey: options.apiKey,
+    timeoutMs: options.timeoutMs || 0,
   });
+
+  if (options.cacheDir && cacheKey) {
+    // Redact secrets BEFORE persisting the LLM response. The cache file is
+    // long-lived (24h TTL) and may be read by anyone with filesystem access;
+    // we treat it as a public-readable artefact and strip secret material
+    // pro-actively rather than relying on downstream redaction (which only
+    // protects the output channel, not the cache itself).
+    writeCache(options.cacheDir, cacheKey, redactReportSecrets(result));
+  }
 
   return {
     ...result,
     tool: { name: TOOL_NAME, version: TOOL_VERSION },
     scanned_at: new Date().toISOString(),
+    cache_hit: false,
     // Mirror cost_usd → cost (back-compat) and keep cost_usd as canonical
     cost: result.cost_usd,
   };
+}
+
+/**
+ * Strip secrets from every finding's prose fields before persisting to the
+ * file cache. Mirrors `normalizeFinding` redaction but is independent from it
+ * — we want defence-in-depth: even if normalisation is skipped or the cache
+ * is read by a different code path, secrets stay out of the on-disk artefact.
+ *
+ * Only the strings the user might recognise as exfiltration vectors are
+ * touched (evidence, rationale, remediation). Metadata stays as-is.
+ *
+ * @param {object} report
+ * @returns {object} a shallow copy with redacted findings + suppressed_findings
+ */
+export function redactReportSecrets(report) {
+  if (!report || typeof report !== 'object') return report;
+  const scrub = (f) => {
+    if (!f || typeof f !== 'object') return f;
+    const out = { ...f };
+    if (typeof out.evidence === 'string')    out.evidence    = redactSecrets(out.evidence);
+    if (typeof out.rationale === 'string')   out.rationale   = redactSecrets(out.rationale);
+    if (typeof out.remediation === 'string') out.remediation = redactSecrets(out.remediation);
+    return out;
+  };
+  return {
+    ...report,
+    findings: Array.isArray(report.findings) ? report.findings.map(scrub) : report.findings,
+    suppressed_findings: Array.isArray(report.suppressed_findings)
+      ? report.suppressed_findings.map(scrub)
+      : report.suppressed_findings,
+  };
+}
+
+export function computeCacheKey(providerName, model, groundingBlocks, userMessage) {
+  const groundingHash = crypto.createHash('sha256');
+  for (const b of groundingBlocks) groundingHash.update(b.text);
+  const userHash = crypto.createHash('sha256').update(userMessage).digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(`${providerName}|${model}|${groundingHash.digest('hex')}|${userHash}`)
+    .digest('hex');
+}
+
+export function readCache(cacheDir, key) {
+  try {
+    const file = path.join(cacheDir, key + '.json');
+    if (!fs.existsSync(file)) return null;
+    const stat = fs.statSync(file);
+    if (Date.now() - stat.mtimeMs > CACHE_TTL_MS) return null;
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    // Corrupt cache entry: silently miss rather than crash the scan.
+    return null;
+  }
+}
+
+export function writeCache(cacheDir, key, value) {
+  try {
+    fs.mkdirSync(cacheDir, { recursive: true });
+    // Atomic write: tmp file + rename. Prevents partial reads if a concurrent
+    // process opens the file mid-write (rare but possible in parallel scans).
+    const tmp = path.join(cacheDir, key + '.tmp');
+    const final = path.join(cacheDir, key + '.json');
+    fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+    fs.renameSync(tmp, final);
+  } catch (e) {
+    if (envBool('SECURITY_AUDIT_DEBUG')) {
+      process.stderr.write(`[security-audit] cache write failed (${e.message}); continuing without cache.\n`);
+    }
+  }
 }
 
 // =============================================================================
@@ -174,6 +286,7 @@ async function main() {
       diff: { type: 'string' },
       provider: { type: 'string', default: 'auto' },
       model: { type: 'string' },
+      timeout: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
       'list-models': { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
@@ -196,6 +309,7 @@ Model aliases:
 Other:
   --list-models               Show all model aliases known per provider
   --dry-run                   Don't call API; emit assembled prompt summary
+  --timeout=N                 Abort the LLM call after N seconds (default: no timeout)
   --help                      This message
 `);
     process.exit(0);
@@ -223,10 +337,20 @@ Other:
   }
 
   try {
+    let timeoutMs = 0;
+    if (values.timeout != null && values.timeout !== '') {
+      const parsed = Number(values.timeout);
+      if (!Number.isFinite(parsed) || parsed < 0 || !Number.isInteger(parsed)) {
+        console.error(`llm_analyze: invalid --timeout=${values.timeout} (expected a non-negative integer of seconds)`);
+        process.exit(2);
+      }
+      timeoutMs = parsed * 1000;
+    }
     const result = await analyzeDiff(diffJson, {
       provider: values.provider,
       model: values.model,
       dryRun: values['dry-run'],
+      timeoutMs,
     });
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   } catch (err) {

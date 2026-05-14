@@ -49,7 +49,7 @@ const VALID_RULE_ID_RX = /^(R-\d{2}|B-\d{2}|D-\d{2}|NEW_PATTERN|\*)$/;
  * --> for HTML), then splits off any reason text (after em-dash, en-dash, or
  * double-hyphen), then filters comma-separated tokens by valid rule_id format.
  */
-function parseRuleIdsFromBody(body) {
+export function parseRuleIdsFromBody(body) {
   // Strip trailing comment terminators: */, */}, -->
   body = body.replace(/\s*-->\s*$/, '')
              .replace(/\s*\*\/\s*\}?\s*$/, '');
@@ -165,7 +165,12 @@ function globToRegex(glob) {
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i];
     if (c === '*') {
-      if (glob[i + 1] === '*') { re += '.*'; i++; }
+      if (glob[i + 1] === '*' && glob[i + 2] === '/') {
+        // `**/` is a zero-or-more path-segment prefix. See extract_diff.mjs
+        // for the rationale — keep this in sync.
+        re += '(?:.*\\/)?';
+        i += 2;
+      } else if (glob[i + 1] === '*') { re += '.*'; i++; }
       else re += '[^/]*';
     } else if (c === '?') {
       re += '[^/]';

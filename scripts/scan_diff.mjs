@@ -112,8 +112,16 @@ Output / filtering:
   --context=<n>            Lines of context around hunks (default: 10)
   --include=<glob>         File include pattern (repeatable)
   --exclude=<glob>         File exclude pattern (repeatable)
+  --include-file-context   Attach full-file content for files with findings
+                           (helps LLM disambiguate diffs that depend on global state)
   --max-files=<n>          Cap files in diff (default: 50)
   --commit-sha=<sha>       Commit SHA to display in PR comment
+  --timeout=<sec>          Abort the LLM call after N seconds (default: no timeout)
+  --max-cost=<usd>         Refuse scans whose reported cost exceeds this budget,
+                           in USD (default: no cap). Useful for accidental large PRs.
+  --cache-dir=<path>       File-based cache directory for LLM responses
+                           (default: .security-audit-cache/ in repo root; use 'none' to disable)
+  --no-cache               Disable file-based cache (alias for --cache-dir=none)
   --dry-run                Build prompt but skip API call
   --help                   Show this help
 
@@ -150,10 +158,15 @@ async function main() {
         context: { type: 'string', default: '10' },
         include: { type: 'string', multiple: true, default: [] },
         exclude: { type: 'string', multiple: true, default: [] },
+        'include-file-context': { type: 'boolean', default: false },
         'max-files': { type: 'string', default: '50' },
         'commit-sha': { type: 'string' },
         'no-color': { type: 'boolean', default: false },
         'dry-run': { type: 'boolean', default: false },
+        timeout: { type: 'string' },
+        'max-cost': { type: 'string' },
+        'cache-dir': { type: 'string' },
+        'no-cache': { type: 'boolean', default: false },
         help: { type: 'boolean', default: false },
       },
       strict: true,
@@ -181,6 +194,7 @@ async function main() {
   extractArgs.push(`--max-files=${values['max-files']}`);
   for (const inc of values.include || []) extractArgs.push(`--include=${inc}`);
   for (const exc of values.exclude || []) extractArgs.push(`--exclude=${exc}`);
+  if (values['include-file-context']) extractArgs.push('--include-file-context');
 
   if (!values.against && !values.staged && !values.diff) {
     process.stderr.write('scan_diff: must specify one of --against=<ref>, --staged, or --diff=<file>\n');
@@ -215,17 +229,73 @@ async function main() {
   // === 2. LLM analysis ===
   const model = values.model || process.env.SECURITY_AUDIT_MODEL;
   const provider = values.provider || process.env.SECURITY_AUDIT_PROVIDER || 'auto';
+
+  // `--timeout` must be a non-negative integer. Reject silent fallbacks: a user
+  // typing `--timeout=5abc` (or `--timeout=foo`) deserves an error, not a
+  // silently disabled timeout. `parseInt` accepts trailing junk, so we cross-
+  // check the round-trip against the original string.
+  let timeoutMs = 0;
+  if (values.timeout != null && values.timeout !== '') {
+    const parsed = Number(values.timeout);
+    if (!Number.isFinite(parsed) || parsed < 0 || !Number.isInteger(parsed)) {
+      process.stderr.write(`scan_diff: invalid --timeout=${values.timeout} (expected a non-negative integer of seconds)\n`);
+      process.exit(3);
+    }
+    timeoutMs = parsed * 1000;
+  }
+
+  // `--no-cache` wins over `--cache-dir=...` (most specific intent: "don't cache"
+  // shouldn't be silently overridden by a path env from a parent shell). Default
+  // is `.security-audit-cache/` in repo root; explicit `none` also disables.
+  let cacheDir = null;
+  if (!values['no-cache']) {
+    const requested = values['cache-dir'] ?? process.env.SECURITY_AUDIT_CACHE_DIR ?? '.security-audit-cache';
+    if (requested && requested !== 'none' && requested !== 'false') {
+      cacheDir = path.isAbsolute(requested) ? requested : path.join(findRepoRoot(), requested);
+    }
+  }
+
   let report;
   try {
     report = await analyzeDiff(diffJson, {
       provider,
       model,
       dryRun: values['dry-run'],
+      timeoutMs,
+      cacheDir,
     });
-    debug('analyzed', { provider: report.provider, model: report.model, findings: report.findings?.length, cost: report.cost });
+    debug('analyzed', {
+      provider: report.provider,
+      model: report.model,
+      findings: report.findings?.length,
+      cost: report.cost,
+      cache_hit: report.cache_hit,
+    });
   } catch (e) {
     process.stderr.write(`scan_diff: LLM analysis failed: ${e.message}\n`);
     process.exit(3);
+  }
+
+  // Budget guard: if the actual cost exceeded the user's --max-cost cap,
+  // refuse to act on the report. The LLM call already happened (we can't
+  // un-spend the dollars), but we surface a clear error rather than silently
+  // proceeding — useful when a runaway PR (or a misconfigured loop) sends
+  // an unexpectedly large diff in CI.
+  if (values['max-cost'] != null && values['max-cost'] !== '') {
+    const cap = Number(values['max-cost']);
+    if (!Number.isFinite(cap) || cap < 0) {
+      process.stderr.write(`scan_diff: invalid --max-cost=${values['max-cost']} (expected a non-negative number of USD)\n`);
+      process.exit(3);
+    }
+    const actual = report.cost ?? report.cost_usd ?? 0;
+    if (actual > cap) {
+      process.stderr.write(
+        `scan_diff: cost budget exceeded — actual $${actual.toFixed(6)} > cap $${cap.toFixed(6)}.\n` +
+        `Output not emitted to avoid acting on results from an over-budget run. ` +
+        `Use --max-cost=0 to disable the cap (not recommended).\n`,
+      );
+      process.exit(3);
+    }
   }
 
   if (values['dry-run']) {

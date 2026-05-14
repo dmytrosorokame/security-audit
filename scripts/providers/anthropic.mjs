@@ -17,7 +17,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { extractJsonFromText, roundCost, ProviderError, withRetry } from './_common.mjs';
+import { extractJsonFromText, roundCost, ProviderError, withRetry, withTimeout } from './_common.mjs';
 
 export const NAME = 'anthropic';
 export const ENV_KEY = 'ANTHROPIC_API_KEY';
@@ -79,9 +79,10 @@ function buildSystem(groundingBlocks) {
  * @param {string} params.userMessage                   — the diff payload
  * @param {string} [params.model]                       — alias or exact model ID
  * @param {string} [params.apiKey]                      — defaults to ANTHROPIC_API_KEY env
+ * @param {number} [params.timeoutMs]                   — abort the request after N ms (0 = no timeout)
  * @returns {Promise<Object>}                            — normalized envelope
  */
-export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
+export async function analyze({ groundingBlocks, userMessage, model, apiKey, timeoutMs = 0 }) {
   const resolvedModel = resolveModel(model);
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
   if (!key) {
@@ -94,16 +95,24 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
   let response;
   try {
     response = await withRetry(
-      () => client.messages.create({
-        model: resolvedModel,
-        max_tokens: 8000,
-        temperature: 0,
-        system: buildSystem(groundingBlocks),
-        messages: [{ role: 'user', content: userMessage }],
-      }),
+      () => withTimeout(
+        (signal) => client.messages.create(
+          {
+            model: resolvedModel,
+            max_tokens: 8000,
+            temperature: 0,
+            system: buildSystem(groundingBlocks),
+            messages: [{ role: 'user', content: userMessage }],
+          },
+          { signal },
+        ),
+        timeoutMs,
+      ),
       {
         attempts: 3,
         shouldRetry: (e) => {
+          // Timeout / abort: don't retry (the user-supplied budget is already spent).
+          if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return false;
           // RateLimitError + 5xx are transient; auth/bad_request are permanent.
           if (e instanceof Anthropic.RateLimitError) return true;
           const s = e?.status;
@@ -118,6 +127,9 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
       },
     );
   } catch (err) {
+    if (err?.name === 'TimeoutError') {
+      throw new ProviderError(NAME, 'timeout', err.message, err);
+    }
     if (err instanceof Anthropic.RateLimitError) {
       throw new ProviderError(NAME, 'rate_limit', err.message, err);
     }

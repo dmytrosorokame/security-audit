@@ -73,12 +73,28 @@ export function roundCost(usd) {
 /**
  * Build the canonical user message text from a structured diff JSON.
  * Same format across providers so prompts stay portable.
+ *
+ * Important: strips volatile fields (`extracted_at` and other timestamps) so
+ * the user message is a deterministic function of the diff content alone.
+ * Without this the cache key (sha256 of the user message) churns every run
+ * even when the diff is identical, and every cache hit becomes a cache miss.
  */
 export function buildUserMessage(diffJson) {
+  // Whitelist stable fields. mode/base/head can be informative for the LLM
+  // (e.g. distinguishing --staged from a PR diff), but `extracted_at` is
+  // pure noise from a caching standpoint and adds nothing for the model.
+  const stable = {
+    schema_version: diffJson?.schema_version,
+    mode: diffJson?.mode,
+    base: diffJson?.base,
+    head: diffJson?.head,
+    stats: diffJson?.stats,
+    files: diffJson?.files,
+  };
   return `Analyze the following git diff for security vulnerabilities. Follow every rule in the system prompt — especially: ground each finding in the OWASP catalog (or use NEW_PATTERN), verify file/line attribution against the diff, and return strict JSON only (no markdown fences, no preamble).
 
 <diff>
-${JSON.stringify(diffJson, null, 2)}
+${JSON.stringify(stable, null, 2)}
 </diff>`;
 }
 
@@ -158,4 +174,47 @@ export async function withRetry(fn, { attempts = 3, baseDelayMs = 500, shouldRet
     }
   }
   throw lastErr;
+}
+
+/**
+ * Race a promise against a wall-clock timeout. Aborts the underlying request
+ * (via the signal returned to `fn`) and rejects with a `TimeoutError` if the
+ * promise doesn't resolve within `timeoutMs`.
+ *
+ * Both Anthropic SDK and OpenAI SDK accept `{ signal: AbortSignal }` in their
+ * request options, so callers can forward `controller.signal` to abort the
+ * in-flight HTTP request — not just stop awaiting it.
+ *
+ * Pass `timeoutMs <= 0` to disable (returns the unwrapped promise).
+ *
+ * @template T
+ * @param {(signal: AbortSignal) => Promise<T>} fn
+ * @param {number} timeoutMs
+ * @returns {Promise<T>}
+ */
+export async function withTimeout(fn, timeoutMs) {
+  if (!timeoutMs || timeoutMs <= 0) {
+    return fn(new AbortController().signal);
+  }
+  const controller = new AbortController();
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      // Order matters: reject the race FIRST so the timeout wins, then signal
+      // the underlying fn to abort its in-flight request. If we called abort()
+      // first, the SDK's abort listener would reject fn's promise synchronously
+      // (with an AbortError/DOMException), and that error — not our
+      // TimeoutError — would surface to the caller through Promise.race.
+      const err = new Error(`LLM call exceeded timeout of ${timeoutMs}ms`);
+      err.name = 'TimeoutError';
+      err.code = 'ETIMEDOUT';
+      reject(err);
+      controller.abort();
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([fn(controller.signal), timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
 }

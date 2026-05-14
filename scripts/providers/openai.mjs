@@ -24,7 +24,7 @@
  */
 
 import OpenAI from 'openai';
-import { extractJsonFromText, roundCost, ProviderError, withRetry } from './_common.mjs';
+import { extractJsonFromText, roundCost, ProviderError, withRetry, withTimeout } from './_common.mjs';
 
 export const NAME = 'openai';
 export const ENV_KEY = 'OPENAI_API_KEY';
@@ -101,8 +101,9 @@ function buildSystemMessage(groundingBlocks) {
  * @param {string} params.userMessage
  * @param {string} [params.model]    — alias (best|cheap|4o|mini) or exact id
  * @param {string} [params.apiKey]   — defaults to OPENAI_API_KEY env
+ * @param {number} [params.timeoutMs] — abort the LLM call after N ms (0 = no timeout)
  */
-export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
+export async function analyze({ groundingBlocks, userMessage, model, apiKey, timeoutMs = 0 }) {
   const resolvedModel = resolveModel(model);
   const key = apiKey || process.env.OPENAI_API_KEY;
   if (!key) {
@@ -137,10 +138,14 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
   let response;
   try {
     response = await withRetry(
-      () => client.chat.completions.create(requestBody),
+      () => withTimeout(
+        (signal) => client.chat.completions.create(requestBody, { signal }),
+        timeoutMs,
+      ),
       {
         attempts: 3,
         shouldRetry: (e) => {
+          if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return false;
           // Retry transient: 429 (rate limit) and 5xx. Auth/bad-request errors
           // are permanent — fail fast.
           const s = e?.status;
@@ -154,6 +159,7 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey }) {
       },
     );
   } catch (err) {
+    if (err?.name === 'TimeoutError') throw new ProviderError(NAME, 'timeout', err.message, err);
     const status = err?.status;
     if (status === 401) throw new ProviderError(NAME, 'auth', 'API key rejected', err);
     if (status === 429) throw new ProviderError(NAME, 'rate_limit', err.message, err);
