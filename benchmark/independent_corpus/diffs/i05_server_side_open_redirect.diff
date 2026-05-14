@@ -1,0 +1,15 @@
+diff --git a/server/routes/auth.ts b/server/routes/auth.ts
+index 3030..4040 100644
+--- a/server/routes/auth.ts
++++ b/server/routes/auth.ts
+@@ -10,11 +10,7 @@ const ALLOWED_RETURN_HOSTS = new Set([
+ ]);
+
+ router.get('/login/callback', async (req, res) => {
+-  const target = new URL(String(req.query.returnTo ?? '/'), 'https://app.example.com');
+-  if (!ALLOWED_RETURN_HOSTS.has(target.host)) {
+-    return res.redirect('/');
+-  }
+-  res.redirect(target.toString());
++  res.redirect(String(req.query.returnTo ?? '/'));
+ });

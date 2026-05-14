@@ -1,0 +1,14 @@
+{
+  "name": "Rename + SQL injection regression (parameterised → concatenated)",
+  "diff": "../../examples/07_renamed_with_change.diff",
+  "expected": [
+    {
+      "rule_id": "B-01",
+      "owasp_id": "A03:2021",
+      "cwe_id": "CWE-89",
+      "severity": "critical"
+    }
+  ],
+  "expect_zero_findings": false,
+  "notes": "Tests the diff parser's rename-detection (similarity 78%) plus the analyzer's ability to spot the regression: parameter binding was dropped while migrating from parameterised query to a string-concatenated LIKE clause. Critical because RCE via SQL is feasible on most engines."
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Binary file diff (image asset)",
+  "diff": "../../examples/09_binary_file.diff",
+  "expected": [],
+  "expect_zero_findings": true,
+  "notes": "Binary files contain no analyzable source. Tests the parser's binary-detection (marks status='binary' and skips content) and the analyzer's no-op behaviour on such diffs."
+}

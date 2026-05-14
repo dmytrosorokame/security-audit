@@ -1,0 +1,7 @@
+{
+  "name": "Deletion of a back-door file (command injection removed)",
+  "diff": "../../examples/08_deleted_file.diff",
+  "expected": [],
+  "expect_zero_findings": true,
+  "notes": "Per system prompt rule #9 (refactor that REMOVES a vulnerability — do not report). The diff deletes a file containing `exec(req.query.cmd)`. The analyzer's job is to find regressions, not retrospective audits — flagging this would be a false positive."
+}

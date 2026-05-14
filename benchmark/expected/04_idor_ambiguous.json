@@ -1,0 +1,14 @@
+{
+  "name": "IDOR — new endpoint mutates any user's profile without ownership check",
+  "diff": "../../examples/04_idor_ambiguous.diff",
+  "expected": [
+    {
+      "rule_id": "B-11",
+      "owasp_id": "A01:2021",
+      "cwe_id": "CWE-639",
+      "severity": "high"
+    }
+  ],
+  "expect_zero_findings": false,
+  "notes": "The diff adds a new POST /profile/:id/avatar route that updates any profile by URL-supplied id without checking `req.user.id === req.params.id`. This is IDOR by omission — the ownership check is missing in the new code, not removed from old code. NEEDS_HUMAN verdict is acceptable because the auth middleware that *might* sit upstream is not visible in the diff."
+}

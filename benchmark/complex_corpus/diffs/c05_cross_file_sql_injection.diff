@@ -1,0 +1,37 @@
+diff --git a/api/src/queries/reports.ts b/api/src/queries/reports.ts
+index 1111..2222 100644
+--- a/api/src/queries/reports.ts
++++ b/api/src/queries/reports.ts
+@@ -1,9 +1,11 @@
+ import { sequelize } from '../db';
+
+-export async function reportByDateRange(from: string, to: string) {
+-  return sequelize.query(
+-    'SELECT id, total FROM orders WHERE created_at BETWEEN :from AND :to',
+-    { replacements: { from, to }, type: 'SELECT' },
+-  );
++export async function reportByDateRange(filter: { from: string; to: string; tenant?: string }) {
++  const tenantClause = filter.tenant ? `AND tenant_id = '${filter.tenant}'` : '';
++  return sequelize.query(
++    `SELECT id, total FROM orders WHERE created_at BETWEEN :from AND :to ${tenantClause}`,
++    { replacements: { from: filter.from, to: filter.to }, type: 'SELECT' },
++  );
+ }
+diff --git a/api/src/routes/reports.ts b/api/src/routes/reports.ts
+index 3333..4444 100644
+--- a/api/src/routes/reports.ts
++++ b/api/src/routes/reports.ts
+@@ -3,9 +3,12 @@ import { reportByDateRange } from '../queries/reports';
+
+ const router = Router();
+
+ router.get('/reports/sales', async (req, res) => {
+   const { from, to } = req.query as { from: string; to: string };
+-  const rows = await reportByDateRange(from, to);
++  const rows = await reportByDateRange({
++    from,
++    to,
++    tenant: req.query.tenant as string | undefined,
++  });
+   res.json(rows);
+ });

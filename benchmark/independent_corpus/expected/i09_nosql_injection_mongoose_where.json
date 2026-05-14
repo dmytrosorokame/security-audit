@@ -1,0 +1,16 @@
+{
+  "name": "NoSQL injection via Mongoose $where with template string (CVE-2019-7609 family)",
+  "diff": "../diffs/i09_nosql_injection_mongoose_where.diff",
+  "expected": [
+    {
+      "rule_id": "B-03",
+      "owasp_id": "A03:2021",
+      "cwe_id": "CWE-943",
+      "severity": "critical"
+    }
+  ],
+  "expect_zero_findings": false,
+  "cve_reference": "CVE-2019-7609 (Kibana) / CWE-943 — Mongoose $where + template-string injection is a documented anti-pattern.",
+  "pattern_description": "Diff swaps a safe `$text` index search (with regex sanitisation) for `$where` operator with user input interpolated into a JavaScript predicate. `$where` runs arbitrary JS server-side; classic NoSQL-injection-to-RCE chain.",
+  "notes": "Even though the catalog rule B-03 lists this exact pattern (Mongoose `$where`), this independent-corpus case still tests recall — the LLM must recognise the regression from the safe `$text + sanitisation` baseline being deleted, not just spot the dangerous sink in isolation."
+}

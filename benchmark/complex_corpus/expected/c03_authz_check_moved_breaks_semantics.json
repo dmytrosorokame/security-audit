@@ -1,0 +1,17 @@
+{
+  "name": "IDOR — authz middleware moved from router.use to PUT only, GET unprotected",
+  "diff": "../diffs/c03_authz_check_moved_breaks_semantics.diff",
+  "expected": [
+    {
+      "rule_id": "B-11",
+      "owasp_id": "A01:2021",
+      "cwe_id": "CWE-639",
+      "severity": "high"
+    }
+  ],
+  "expect_zero_findings": false,
+  "complexity": "semantic",
+  "files_changed": 2,
+  "challenge": "The diff PRESERVES the authz middleware (it's still imported, still used) but **moves it from `router.use('/documents/:id', ...)` to only the `PUT` route**. The GET route, which was previously covered by the router-level middleware, is now reachable without ownership check — i.e. any authenticated user can read any document by id. The middleware change is a noisy no-op (`req.user?.id` → `!req.user || req.user.id`), which is the classic distractor that draws attention away from the real regression.",
+  "notes": "This is the ADR-001 limitation in action: the regression is the *absence* of a router.use call on the GET route, but the diff only shows the *removal* of the router.use registration. Without the context of the rest of routes/documents.ts, an LLM might say 'authz is still in place for PUT, so this is fine'. The correct verdict is at least LIKELY_TP — the GET endpoint is no longer protected by the same middleware. Includes a deliberate distractor: trivial null-check refactor in authz.ts."
+}

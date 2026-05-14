@@ -1,0 +1,10 @@
+{
+  "name": "True negative: multi-file repository-pattern refactor with proper allowlist preserved",
+  "diff": "../diffs/c06_safe_large_refactor.diff",
+  "expected": [],
+  "expect_zero_findings": true,
+  "complexity": "noise-heavy",
+  "files_changed": 3,
+  "challenge": "Looks scary but is safe. New PATCH /users/me/profile endpoint accepts `req.body` directly — looks like mass assignment at first glance. But the repository method explicitly allowlists fields via `PROFILE_FIELDS` and copies them one-by-one into `safe`. The patch uses `req.user!.id` (own profile) not `req.params.id`, so there's no IDOR either. Tests whether the analyzer correctly recognises **defence-in-depth applied at the repository layer**, not just at the controller layer where most rule patterns look.",
+  "notes": "This case explicitly probes false positives on a real-world pattern (introducing the repository pattern with new endpoints). A diff-only scanner that doesn't read the new repository file would likely flag mass assignment on the route. The full diff is 28 added lines across 3 files — non-trivial scope. Important: this case must NOT emit findings; if it does, those are FPs and the precision metric drops."
+}

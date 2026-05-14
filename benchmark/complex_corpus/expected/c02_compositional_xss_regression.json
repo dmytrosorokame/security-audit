@@ -1,0 +1,18 @@
+{
+  "name": "XSS hidden in DOMPurify-allowlist relaxation across 3 files",
+  "diff": "../diffs/c02_compositional_xss_regression.diff",
+  "expected": [
+    {
+      "rule_id": "R-01",
+      "owasp_id": "A03:2021",
+      "cwe_id": "CWE-79",
+      "severity": "critical",
+      "accept_alternatives": ["NEW_PATTERN", "R-02"]
+    }
+  ],
+  "expect_zero_findings": false,
+  "complexity": "compositional",
+  "files_changed": 3,
+  "challenge": "The diff DOES keep DOMPurify.sanitize() in the call chain — a naive scanner sees 'sanitize is still called' and reports clean. The actual regression is the `ADD_TAGS: ['iframe', 'script']` + `ADD_ATTR: ['onerror', 'onload', 'srcdoc']` configuration, which **adds the very vectors DOMPurify normally strips**. The result is sanitisation theatre — the function name says 'sanitize' but the configuration allows arbitrary XSS payloads. Also note the `export const sanitize = (s: string) => s` re-export: a string identity function passing as a sanitiser. Used by CommentList, which now has a free pass.",
+  "notes": "Severity bumped to critical: the configuration looks intentional (developer explicitly opted in), which is more dangerous than an accidental removal. Two regressions in one PR — the DOMPurify config and the noop sanitize() export — make this the most painful real-world case to review. NEW_PATTERN accept_alternative because no single catalog rule cleanly describes 'sanitiser configured to allow script tags'."
+}

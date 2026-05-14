@@ -1,0 +1,22 @@
+diff --git a/server/app.ts b/server/app.ts
+index 9090..a0a0 100644
+--- a/server/app.ts
++++ b/server/app.ts
+@@ -1,16 +1,12 @@
+ import express from 'express';
+-import csurf from 'csurf';
+ import cookieParser from 'cookie-parser';
+ import { router as apiRouter } from './routes';
+
+ const app = express();
+ app.use(express.json());
+ app.use(cookieParser());
+
+-// CSRF protection on all mutating routes
+-const csrfProtection = csurf({ cookie: { sameSite: 'strict', secure: true } });
+-app.use(csrfProtection);
+-
++// SPA sends auth via Authorization header, so CSRF is not relevant
+ app.use('/api', apiRouter);
+
+ export default app;

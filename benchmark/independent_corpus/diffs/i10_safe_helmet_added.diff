@@ -1,0 +1,19 @@
+diff --git a/server/app.ts b/server/app.ts
+index d0d0..e0e0 100644
+--- a/server/app.ts
++++ b/server/app.ts
+@@ -1,12 +1,16 @@
+ import express from 'express';
++import helmet from 'helmet';
+ import { router as apiRouter } from './routes';
+
+ const app = express();
+ app.use(express.json());
++app.use(helmet({
++  contentSecurityPolicy: { useDefaults: true, directives: { "img-src": ["'self'", "data:"] } },
++  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
++  referrerPolicy: { policy: 'no-referrer' },
++}));
+ app.use('/api', apiRouter);
+
+ export default app;

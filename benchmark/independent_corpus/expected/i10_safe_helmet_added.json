@@ -1,0 +1,8 @@
+{
+  "name": "True negative: Helmet middleware added with hardened directives",
+  "diff": "../diffs/i10_safe_helmet_added.diff",
+  "expected": [],
+  "expect_zero_findings": true,
+  "pattern_description": "Defence-in-depth improvement: adds Helmet with explicit CSP, HSTS preload, no-referrer. Per system prompt rule #9 (refactor that REMOVES a vulnerability — do not report). A false-positive here would prove the analyzer over-flags hardening commits.",
+  "notes": "This case explicitly probes the model's ability to recognise *improvements* and not flag them. The diff strictly adds security mechanisms — no removal, no relaxation."
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Prototype pollution via CLI argv deep-merge (CVE-2021-44906 family)",
+  "diff": "../diffs/i01_prototype_pollution_argv_merge.diff",
+  "expected": [
+    {
+      "rule_id": "R-05",
+      "owasp_id": "A08:2021",
+      "cwe_id": "CWE-1321",
+      "severity": "high"
+    }
+  ],
+  "expect_zero_findings": false,
+  "cve_reference": "CVE-2021-44906 (minimist) / CVE-2022-37601 (loader-utils)",
+  "pattern_description": "Deep-merge of CLI argument paths into an object without guarding against `__proto__`, `prototype`, `constructor` keys. The diff REMOVES the explicit denylist of those keys, re-introducing prototype pollution. The introduced `setDeep` walks `path` array including poisoned segments.",
+  "notes": "This pattern was the root cause of multiple high-profile prototype-pollution disclosures in 2021-2022 across CLI/option parsers (minimist, yargs-parser, loader-utils, set-value). The diff explicitly removes the denylist that earlier patches added — a regression style commonly seen during refactors."
+}

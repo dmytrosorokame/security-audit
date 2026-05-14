@@ -1,0 +1,38 @@
+diff --git a/api/src/utils/deep-merge.ts b/api/src/utils/deep-merge.ts
+index 1212..3434 100644
+--- a/api/src/utils/deep-merge.ts
++++ b/api/src/utils/deep-merge.ts
+@@ -1,17 +1,11 @@
+-const DENY = new Set(['__proto__', 'prototype', 'constructor']);
+-
+ export function deepMerge<T extends object>(target: T, source: Record<string, unknown>): T {
+   for (const key of Object.keys(source)) {
+-    if (DENY.has(key)) continue;
+-    const tv = (target as Record<string, unknown>)[key];
++    const tv = (target as Record<string, unknown>)[key];
+     const sv = source[key];
+     if (tv && typeof tv === 'object' && sv && typeof sv === 'object' && !Array.isArray(sv)) {
+       deepMerge(tv as object, sv as Record<string, unknown>);
+     } else {
+       (target as Record<string, unknown>)[key] = sv;
+     }
+   }
+   return target;
+ }
+diff --git a/api/src/routes/settings.ts b/api/src/routes/settings.ts
+index 5656..7878 100644
+--- a/api/src/routes/settings.ts
++++ b/api/src/routes/settings.ts
+@@ -2,11 +2,12 @@ import { Router } from 'express';
+ import { deepMerge } from '../utils/deep-merge';
+ import { getUserSettings, saveUserSettings } from '../services/settings';
+
+ const router = Router();
+
+ router.patch('/me/settings', async (req, res) => {
+   const current = await getUserSettings(req.user!.id);
+-  const next = deepMerge({ ...current }, req.body);
++  const next = deepMerge(current, req.body);
+   await saveUserSettings(req.user!.id, next);
+   res.json(next);
+ });

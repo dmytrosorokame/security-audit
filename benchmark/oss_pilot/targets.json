@@ -1,0 +1,23 @@
+{
+  "description": "Public OSS Node/TypeScript projects whose PRs are used as third-party validation data for security-audit. Selection criteria: (a) the project has security-relevant code (auth, parsing, network I/O, file handling), (b) it accepts external PRs (so the diff style is heterogeneous), (c) it is permissively licensed (MIT/Apache/ISC/BSD) so we can reference their diffs in academic write-ups without further negotiation.",
+  "selection_notes": "We deliberately picked midsize libraries rather than mega-frameworks. Express has 60K+ stars but its modern PRs are mostly typings and small bug-fixes; nest has 70K+ stars but uses decorators that our catalog does not specifically cover; the libraries below have manageable PR cadence and meaningful security surface (input parsing, HTTP clients, ORMs, template engines).",
+  "license_check": "All repos listed below are confirmed open-source as of the listing date. Re-confirm license headers before redistributing diffs.",
+  "repos": [
+    "fastify/fastify",
+    "expressjs/express",
+    "koajs/koa",
+    "axios/axios",
+    "form-data/form-data",
+    "Automattic/mongoose",
+    "sequelize/sequelize",
+    "nodemailer/nodemailer",
+    "expressjs/multer",
+    "validatorjs/validator.js"
+  ],
+  "out_of_scope_examples": [
+    "facebook/react — UI library, low overlap with our backend-heavy catalog",
+    "nodejs/node — too large per PR; non-trivial expert labelling required",
+    "vercel/next.js — framework with too much non-security routine work",
+    "openssl/openssl — out of language stack (C)"
+  ]
+}

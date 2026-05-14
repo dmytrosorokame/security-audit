@@ -1,0 +1,14 @@
+{
+  "name": "Dockerfile drops USER node directive — container now runs as root",
+  "diff": "../../examples/06_dockerfile_root_user.diff",
+  "expected": [
+    {
+      "rule_id": "D-01",
+      "owasp_id": "A05:2021",
+      "cwe_id": "CWE-250",
+      "severity": "medium"
+    }
+  ],
+  "expect_zero_findings": false,
+  "notes": "Removing `USER node` reverts the container to the root user. Detection requires understanding that the deletion (not an addition) re-introduces the vulnerability."
+}

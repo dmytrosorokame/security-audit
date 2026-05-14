@@ -1,0 +1,10 @@
+# Fetched diffs and labelled JSONs are populated per-run by
+# scripts/collect_oss_diffs.mjs and labelled by the operator. They are NOT
+# checked in — the upstream license terms vary by repo and we don't want to
+# accidentally redistribute a copyleft diff in MIT-licensed security-audit.
+#
+# Keep this file and README.md tracked; ignore everything else.
+diffs/
+expected/
+!.gitignore
+!README.md
