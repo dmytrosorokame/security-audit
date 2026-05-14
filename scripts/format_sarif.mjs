@@ -10,6 +10,7 @@
  *   node format_sarif.mjs --input=report.json --output=report.sarif
  */
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { parseArgs } from 'node:util';
 
@@ -21,29 +22,55 @@ const SEVERITY_TO_SARIF = {
   info: 'none',
 };
 
+const SUPPRESSION_KIND_TO_SARIF = {
+  inline: 'inSource',
+  'repo-ignore': 'external',
+  external: 'external',
+};
+
+/**
+ * Stable fingerprint used by GitHub Code Scanning to dedupe findings across
+ * runs. Combination of rule_id + file + evidence — same finding in same file
+ * with same code stays identified even if line numbers shift after a refactor.
+ *
+ * @param {{rule_id?: string, file?: string, evidence?: string}} f
+ * @returns {string}
+ */
+function fingerprintFinding(f) {
+  const key = [f.rule_id || '', f.file || '', (f.evidence || '').replace(/\s+/g, ' ').trim()].join('|');
+  return crypto.createHash('sha256').update(key).digest('hex').slice(0, 32);
+}
+
+/**
+ * Build a SARIF 2.1.0 log from a security-audit report.
+ *
+ * @param {object} report — output of scan_diff (findings, suppressed_findings, tool, scanned_at)
+ * @returns {object} SARIF document
+ */
 function formatSarif(report) {
   const findings = report.findings || [];
+  const suppressedFindings = report.suppressed_findings || [];
 
-  // Build unique rules array from findings. Per SARIF spec, `name` should be
-  // a stable identifier (we use the raw rule_id like "R-02"). The human
-  // title goes into `shortDescription.text` which GitHub Code Scanning UI
-  // displays next to the rule name.
+  // Build unique rules array from BOTH active and suppressed findings so the
+  // Code Scanning UI can render suppressed entries (which still reference
+  // their rule_id via results[].ruleId).
   const rulesMap = new Map();
-  for (const f of findings) {
+  for (const f of [...findings, ...suppressedFindings]) {
     const id = f.rule_id;
+    if (!id) continue;
     if (!rulesMap.has(id)) {
       rulesMap.set(id, {
         id,
-        name: id,                      // keep "R-02" raw, not "R 02"
+        name: id,
         shortDescription: {
           text: f.title || id,
         },
         fullDescription: {
-          text: `${id} maps to ${f.owasp_id} / ${f.cwe_id}.`,
+          text: `${id} maps to ${f.owasp_id || 'OWASP-UNKNOWN'} / ${f.cwe_id || 'CWE-UNKNOWN'}.`,
         },
-        helpUri: f.cwe_id
+        helpUri: f.cwe_id && f.cwe_id !== 'CWE-UNKNOWN'
           ? `https://cwe.mitre.org/data/definitions/${f.cwe_id.replace(/[^0-9]/g, '')}.html`
-          : undefined,
+          : 'https://owasp.org/Top10/',
         properties: {
           'security-severity': cvssScoreFromSeverity(f.severity),
           tags: ['security', f.owasp_id, f.cwe_id].filter(Boolean),
@@ -55,33 +82,56 @@ function formatSarif(report) {
     }
   }
 
-  const results = findings.map(f => ({
-    ruleId: f.rule_id,
-    level: SEVERITY_TO_SARIF[f.severity] || 'warning',
-    message: {
-      text: f.rationale || f.title,
-    },
-    locations: [
-      {
-        physicalLocation: {
-          artifactLocation: {
-            uri: f.file,
-            uriBaseId: '%SRCROOT%',
-          },
-          region: {
-            startLine: f.line,
-            snippet: f.evidence ? { text: f.evidence } : undefined,
+  const buildResult = (f, suppression) => {
+    const fp = fingerprintFinding(f);
+    const result = {
+      ruleId: f.rule_id,
+      level: SEVERITY_TO_SARIF[f.severity] || 'warning',
+      message: {
+        text: f.rationale || f.title || f.rule_id,
+      },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: {
+              uri: f.file,
+              uriBaseId: '%SRCROOT%',
+            },
+            region: {
+              startLine: f.line,
+              snippet: f.evidence ? { text: f.evidence } : undefined,
+            },
           },
         },
+      ],
+      partialFingerprints: {
+        'security-audit/v1': fp,
       },
-    ],
-    properties: {
-      verdict: f.verdict,
-      confidence: f.confidence,
-      risk_score: f.risk_score,
-      remediation: f.remediation,
-    },
-  }));
+      properties: {
+        verdict: f.verdict,
+        confidence: f.confidence,
+        risk_score: f.risk_score,
+        remediation: f.remediation,
+      },
+    };
+    if (suppression) {
+      result.suppressions = [
+        {
+          kind: SUPPRESSION_KIND_TO_SARIF[suppression.source] || 'external',
+          justification: suppression.reason || 'Suppressed by security-audit configuration',
+        },
+      ];
+    }
+    return result;
+  };
+
+  const results = [
+    ...findings.map(f => buildResult(f, null)),
+    ...suppressedFindings.map(f => buildResult(f, f.suppression || { source: 'external', reason: 'suppressed' })),
+  ];
+
+  const automationId = report.run_id
+    || `security-audit/${(report.scanned_at || new Date().toISOString()).slice(0, 10)}/${crypto.randomBytes(4).toString('hex')}`;
 
   return {
     $schema: 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
@@ -95,6 +145,9 @@ function formatSarif(report) {
             informationUri: 'https://github.com/dmytrosorokame/security-audit',
             rules: Array.from(rulesMap.values()),
           },
+        },
+        automationDetails: {
+          id: automationId,
         },
         results,
         invocations: [
@@ -143,4 +196,4 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
 
-export { formatSarif };
+export { formatSarif, fingerprintFinding };

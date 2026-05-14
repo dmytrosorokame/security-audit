@@ -30,6 +30,16 @@ const VERDICT_FACTOR = {
   FALSE_POSITIVE: 0.0,
 };
 
+/**
+ * Compute a CVSS-like 0–10 risk score for a finding.
+ *
+ * Score = severityBase × confidenceFactor × verdictFactor, clamped to [0, 10]
+ * and rounded to one decimal. Verdict `FALSE_POSITIVE` zeros the score so
+ * suppressed-by-LLM findings never trip severity gates.
+ *
+ * @param {{severity?: string, confidence?: string, verdict?: string}} finding
+ * @returns {number} risk score in [0.0, 10.0]
+ */
 export function calculateRiskScore(finding) {
   const base = SEVERITY_BASE[finding.severity] ?? 0;
   const cf = CONFIDENCE_FACTOR[finding.confidence] ?? 0.85;

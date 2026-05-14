@@ -91,9 +91,10 @@ function formatPrComment(report, { commitSha } = {}) {
     lines.push(`📍 \`${f.file}:${f.line}\``);
     lines.push('');
     if (f.evidence) {
-      lines.push('```');
+      const fence = pickFence(f.evidence);
+      lines.push(fence);
       lines.push(f.evidence);
-      lines.push('```');
+      lines.push(fence);
       lines.push('');
     }
     if (f.rationale) {
@@ -145,22 +146,42 @@ function footer(report) {
   return `<sub>🤖 Powered by [security-audit](https://github.com/dmytrosorokame/security-audit)</sub>${meta ? ' · ' + meta : ''}`;
 }
 
-// Conservative markdown escape — only escape chars that would actually break
-// GitHub PR comment rendering for our shape of content. Hyphens, parens, plus
-// signs, exclamation marks are fine in prose. Aggressive escaping was breaking
-// clickable URLs in cheat-sheet links.
+// Markdown-safe escape for prose fields (title / rationale / remediation).
+//
+// We use HTML entities for `<` `>` `&` rather than backslash-escapes because
+// CommonMark only honours backslash-escapes for the ASCII-punctuation list,
+// which does NOT include `<` or `>`. A literal `\<script>` therefore renders
+// as `<script>` and would be interpreted as HTML by the surrounding markdown
+// engine (GitHub filters `<script>` specifically, but other tags like `<img
+// onerror>` may still execute depending on the host). HTML entities are
+// rendered as visible text by every Markdown processor — 100% safe.
+//
+// Backtick still uses backslash-escape because it's in the CommonMark
+// escapable set and keeps inline-code rendering correct in URL labels.
 function escapeMd(s) {
   if (typeof s !== 'string') return s;
-  return s.replace(/([\\`<>])/g, '\\$1');
+  return s
+    .replace(/&/g, '&amp;')   // MUST be first — converting < to &lt; first would double-escape
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/`/g, '\\`');
 }
 
-function slugify(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
-function rule2slug(owaspId) {
-  // 'A03:2021' → '2021_A03_-_Injection'-style anchor not stable; we just point at root.
-  return owaspId.split(':')[0];
+/**
+ * Pick a fence (sequence of backticks) for a fenced code block that is
+ * guaranteed to wrap `content` cleanly even if it contains backtick runs.
+ * CommonMark: fence must contain more backticks than the longest run inside.
+ *
+ * @param {string} content
+ * @returns {string} the opening/closing fence string
+ */
+function pickFence(content) {
+  let longestRun = 0;
+  if (typeof content === 'string') {
+    const matches = content.match(/`+/g) || [];
+    for (const m of matches) longestRun = Math.max(longestRun, m.length);
+  }
+  return '`'.repeat(Math.max(3, longestRun + 1));
 }
 
 async function readStdin() {
@@ -186,4 +207,4 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
 
-export { formatPrComment };
+export { formatPrComment, escapeMd, pickFence };
