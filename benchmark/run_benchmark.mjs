@@ -431,17 +431,38 @@ async function main() {
 
   const minStrict = parseFloat(values['min-f1-strict']);
   const minLoose = parseFloat(values['min-f1-loose']);
-  const failed = corpora.filter(c =>
-    c.metrics.strict.f1 < minStrict || c.metrics.loose.f1 < minLoose,
-  );
+  // A corpus with zero positive ground-truth cases (every case is
+  // `expect_zero_findings: true`) has F1 ≡ 0 by definition (TP can never
+  // be positive). Applying the F1 threshold to such a corpus is a
+  // category error — the only meaningful gate is "no false positives".
+  // The OSS pilot corpus is exactly this shape today.
+  const failed = [];
+  for (const c of corpora) {
+    const hasPositiveCases = c.runs.some(r => !r.case.expectZero);
+    if (hasPositiveCases) {
+      if (c.metrics.strict.f1 < minStrict || c.metrics.loose.f1 < minLoose) {
+        failed.push({ corpus: c, reason: `strict F1 ${c.metrics.strict.f1} < ${minStrict} or loose F1 ${c.metrics.loose.f1} < ${minLoose}` });
+      }
+    } else {
+      // TN-only corpus: gate on FP count instead of F1.
+      if (c.metrics.strict.fp > 0) {
+        failed.push({ corpus: c, reason: `${c.metrics.strict.fp} false positive(s) on TN-only corpus (expected 0)` });
+      }
+    }
+  }
   if (failed.length > 0) {
-    for (const c of failed) {
-      process.stderr.write(`✗ corpus '${c.label}' below thresholds (strict ${c.metrics.strict.f1} < ${minStrict} or loose ${c.metrics.loose.f1} < ${minLoose})\n`);
+    for (const { corpus, reason } of failed) {
+      process.stderr.write(`✗ corpus '${corpus.label}' failed: ${reason}\n`);
     }
     process.exit(1);
   }
   for (const c of corpora) {
-    process.stderr.write(`✓ corpus '${c.label}' passed (strict F1 ${c.metrics.strict.f1}, loose F1 ${c.metrics.loose.f1})\n`);
+    const hasPositive = c.runs.some(r => !r.case.expectZero);
+    if (hasPositive) {
+      process.stderr.write(`✓ corpus '${c.label}' passed (strict F1 ${c.metrics.strict.f1}, loose F1 ${c.metrics.loose.f1})\n`);
+    } else {
+      process.stderr.write(`✓ corpus '${c.label}' passed (TN-only, ${c.metrics.strict.tn} TN, 0 FP)\n`);
+    }
   }
   process.exit(0);
 }

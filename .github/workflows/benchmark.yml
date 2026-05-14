@@ -1,11 +1,15 @@
 name: benchmark
 
 # The benchmark job calls real LLM APIs and costs money, so we don't run it
-# on every PR. Triggers:
-#   - workflow_dispatch: manual trigger from the Actions tab
-#   - schedule:           weekly cron (Sundays 02:00 UTC) so we catch drift
-#                         from provider model updates
-#   - push to main:       when ground-truth or scan code changes
+# on every PR or push. Triggers:
+#   - workflow_dispatch: manual trigger from the Actions tab (primary)
+#   - schedule:          weekly cron (Sundays 02:00 UTC) — catches drift
+#                        from provider model updates without manual nudge
+#
+# A push trigger used to live here but was removed: even with path filters,
+# every refactor of scripts/ burnt $0.05-0.20 per run for negligible signal
+# (the dry-run smoke in test.yml already proves the code path compiles).
+# Run benchmark manually before tagging a release, or wait for the weekly cron.
 #
 # Requires OPENAI_API_KEY (or ANTHROPIC_API_KEY) in repo secrets.
 
@@ -26,13 +30,6 @@ on:
         default: '1'
   schedule:
     - cron: '0 2 * * 0'
-  push:
-    branches: [main]
-    paths:
-      - 'benchmark/expected/**'
-      - 'scripts/**'
-      - 'prompts/**'
-      - 'references/**'
 
 jobs:
   benchmark:
