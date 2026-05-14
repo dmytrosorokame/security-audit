@@ -149,7 +149,12 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey, tim
           // Retry transient: 429 (rate limit) and 5xx. Auth/bad-request errors
           // are permanent — fail fast.
           const s = e?.status;
-          return s === 429 || (s >= 500 && s < 600);
+          if (typeof s === 'number') return s === 429 || (s >= 500 && s < 600);
+          // Same network-level fallthrough as the Anthropic adapter — without
+          // this, a flaky uplink during the request silently fails on attempt 1.
+          const code = e?.code || e?.cause?.code;
+          if (code && /^(ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EPIPE)$/.test(code)) return true;
+          return false;
         },
         onRetry: (err, attempt, delayMs) => {
           if (process.stderr.isTTY) {

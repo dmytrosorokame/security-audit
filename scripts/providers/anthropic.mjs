@@ -23,8 +23,10 @@ export const NAME = 'anthropic';
 export const ENV_KEY = 'ANTHROPIC_API_KEY';
 export const DEFAULT_MODEL_ALIAS = 'sonnet';
 
+// Default aliases point at the most recent generation of each tier.
+// Pin a specific revision (e.g. `--model=sonnet-4-5`) for reproducibility.
 const ALIASES = {
-  sonnet: 'claude-sonnet-4-5',
+  sonnet: 'claude-sonnet-4-6',
   'sonnet-4-5': 'claude-sonnet-4-5',
   'sonnet-4-6': 'claude-sonnet-4-6',
   haiku: 'claude-haiku-4-5',
@@ -116,7 +118,13 @@ export async function analyze({ groundingBlocks, userMessage, model, apiKey, tim
           // RateLimitError + 5xx are transient; auth/bad_request are permanent.
           if (e instanceof Anthropic.RateLimitError) return true;
           const s = e?.status;
-          return s >= 500 && s < 600;
+          if (typeof s === 'number') return s >= 500 && s < 600;
+          // No status → likely a network-level error (ECONNRESET, ETIMEDOUT,
+          // ENOTFOUND, fetch failed). Retry these — they're the transient
+          // failures the SDK won't classify for us.
+          const code = e?.code || e?.cause?.code;
+          if (code && /^(ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EPIPE)$/.test(code)) return true;
+          return false;
         },
         onRetry: (err, attempt, delayMs) => {
           if (process.stderr.isTTY) {

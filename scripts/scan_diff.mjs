@@ -326,7 +326,7 @@ async function main() {
       const fileEntry = diffJson.files.find(x => x.path === f.file);
       const corrected = correctFindingLine(f, fileEntry);
       if (corrected && corrected !== f.line) {
-        f = { ...f, line: corrected, line_corrected_from: r.errors.find(() => true) ? f.line : undefined };
+        f = { ...f, line: corrected, line_corrected_from: f.line };
         // Re-validate after fix
         r = validateFinding(f, { diff: diffJson });
         lineCorrected.push(f.file + ':' + f.line);

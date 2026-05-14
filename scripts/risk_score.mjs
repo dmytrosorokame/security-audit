@@ -37,13 +37,23 @@ const VERDICT_FACTOR = {
  * and rounded to one decimal. Verdict `FALSE_POSITIVE` zeros the score so
  * suppressed-by-LLM findings never trip severity gates.
  *
+ * Fallback discipline:
+ *   - missing field (undefined/null) → 0.85 (mid-band, preserves legacy callers)
+ *   - present but invalid string ('bogus') → 0 (signals a real bug instead of
+ *     silently averaging it out — `validate_finding.mjs` rejects these upstream,
+ *     so reaching this branch means a contract violation we want visible).
+ *
  * @param {{severity?: string, confidence?: string, verdict?: string}} finding
  * @returns {number} risk score in [0.0, 10.0]
  */
 export function calculateRiskScore(finding) {
   const base = SEVERITY_BASE[finding.severity] ?? 0;
-  const cf = CONFIDENCE_FACTOR[finding.confidence] ?? 0.85;
-  const vf = VERDICT_FACTOR[finding.verdict] ?? 0.85;
+  const cf = finding.confidence == null
+    ? 0.85
+    : (CONFIDENCE_FACTOR[finding.confidence] ?? 0);
+  const vf = finding.verdict == null
+    ? 0.85
+    : (VERDICT_FACTOR[finding.verdict] ?? 0);
   const score = base * cf * vf;
   return Math.round(Math.max(0, Math.min(10, score)) * 10) / 10;
 }

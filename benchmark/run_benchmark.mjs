@@ -131,7 +131,7 @@ function runScan({ diffPath, provider, model, dryRun, timeoutSec, cacheDir }) {
  * `extras` are actual findings not matched to any expected entry. On
  * `expect_zero_findings` cases, each extra counts as a False Positive.
  */
-function classify(expectedList, actualFindings) {
+export function classify(expectedList, actualFindings) {
   const used = new Set();
   const results = [];
 
@@ -171,8 +171,15 @@ function classify(expectedList, actualFindings) {
   return { results, extras };
 }
 
-function computeMetrics(cases) {
-  let strictTp = 0, looseTp = 0, fn = 0, fp = 0, tn = 0;
+export function computeMetrics(cases) {
+  // Track strict/loose FN separately so PARTIAL_TP is counted once per mode:
+  //   - strict mode: a partial match is a miss → strictFn += 1
+  //   - loose mode:  a partial match is a hit  → strictFn does not move,
+  //                  looseFn does not move
+  // The previous implementation incremented a single `fn` counter inside the
+  // PARTIAL_TP branch AND then added `(looseTp - strictTp)` back into the
+  // strict bucket downstream, double-counting partials in strict.
+  let strictTp = 0, looseTp = 0, strictFn = 0, looseFn = 0, fp = 0, tn = 0;
   for (const c of cases) {
     if (c.expectZero) {
       if (c.extras.length === 0 && c.results.length === 0) tn++;
@@ -181,13 +188,13 @@ function computeMetrics(cases) {
     }
     for (const r of c.results) {
       if (r.classification === 'FULL_TP') { strictTp++; looseTp++; }
-      else if (r.classification === 'PARTIAL_TP') { looseTp++; fn++; /* strict counts as miss */ }
-      else fn++;
+      else if (r.classification === 'PARTIAL_TP') { looseTp++; strictFn++; /* strict miss only */ }
+      else { strictFn++; looseFn++; }
     }
     fp += c.extras.length;
   }
 
-  const f1 = (tp) => {
+  const f1 = (tp, fn) => {
     const denomP = tp + fp;
     const denomR = tp + fn;
     const p = denomP > 0 ? tp / denomP : 0;
@@ -200,8 +207,8 @@ function computeMetrics(cases) {
   };
 
   return {
-    strict: { tp: strictTp, fp, fn: fn + (looseTp - strictTp), tn, ...f1(strictTp) },
-    loose:  { tp: looseTp,  fp, fn,                              tn, ...f1(looseTp) },
+    strict: { tp: strictTp, fp, fn: strictFn, tn, ...f1(strictTp, strictFn) },
+    loose:  { tp: looseTp,  fp, fn: looseFn,  tn, ...f1(looseTp,  looseFn) },
   };
 }
 
@@ -467,7 +474,12 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => {
-  process.stderr.write(`run_benchmark: ${err.stack || err.message}\n`);
-  process.exit(1);
-});
+// Run as CLI only when invoked directly. Without this guard, a unit test that
+// imports `classify` / `computeMetrics` for regression-checking would also
+// trigger main() and try to scan every corpus.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(err => {
+    process.stderr.write(`run_benchmark: ${err.stack || err.message}\n`);
+    process.exit(1);
+  });
+}
