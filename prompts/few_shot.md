@@ -1,12 +1,18 @@
 # Few-shot examples for security-audit diff analysis
 
-Below are 6 example diffs and the expected JSON output. They cover:
+Below are 10 example diffs and the expected JSON output. They cover:
 - (1) clear vulnerability introduction — `TRUE_POSITIVE`, full 3-element trace
 - (2) refactor that introduces SSRF — `TRUE_POSITIVE` with explicit guard removal in trace
 - (3) safe refactor — no findings
 - (4) ambiguous IDOR — `NEEDS_HUMAN`, trace gap is highlighted
 - (5) sanitizer removal regression — `TRUE_POSITIVE`, trace cites the deleted guard
 - (6) self-critique downgrade — initial finding looks dangerous, but a guard found in the same hunk forces `FALSE_POSITIVE`
+- (7) prototype pollution — `TRUE_POSITIVE`, distinguishing R-05 (client) from B-05 (server) by file path / context
+- (8) repository-pattern refactor — `TRUE_NEGATIVE`, illustrates that safe abstractions over raw SQL are not B-01
+- (9) NoSQL injection via `$where` — `TRUE_POSITIVE` distinguishing B-03 from B-01 by operator surface
+- (10) sanitizer-shaped API relaxation (`DOMPurify.sanitize` called but `ADD_TAGS:['script']` defeats it) — `TRUE_POSITIVE`, shows config-change-as-relaxation pattern (R-01)
+
+> Note: examples 1, 4, and 5 are structurally identical to smoke benchmark cases `01_dom_xss_introduction`, `04_idor_ambiguous`, and `05_sanitizer_removed`. This 1-to-1 overlap is **deliberate** — the few-shots ground the model on canonical patterns from the catalog — but it means smoke F1 is **not** an unbiased generalisability measurement. See `docs/INDEPENDENT_VALIDATION.md` and `artifacts/f1_table.md` for the multi-corpus methodology that addresses this bias.
 
 These are injected into the LLM prompt so the model has concrete grounding for tone, structure, verdict discipline, and the **exploit_trace** discipline.
 

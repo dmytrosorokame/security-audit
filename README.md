@@ -15,17 +15,23 @@ Provider-agnostic: works with **Anthropic Claude** (Sonnet / Haiku) or **OpenAI 
 
 ## Live demo
 
-A companion repo, [`dmytrosorokame/security-audit-demo`](https://github.com/dmytrosorokame/security-audit-demo), runs the action on five reference pull requests — four that introduce a vulnerability and one that is a pure refactor. Each PR is publicly reproducible:
+A companion repo, [`dmytrosorokame/security-audit-demo`](https://github.com/dmytrosorokame/security-audit-demo), runs the action on **eight** reference pull requests — six that introduce a vulnerability, one that is a pure refactor, and one that demonstrates the inline-suppression mechanism. Each PR is publicly reproducible:
 
 | # | PR | Pattern | Expected | Detected |
 |---|---|---|---|---|
-| 1 | [demo/01-dom-xss](https://github.com/dmytrosorokame/security-audit-demo/pull/1) | `innerHTML = userInput` via ref callback | R-02 / A03 / CWE-79 (high), R-01 accepted as alt | R-01 (loose TP) |
+| 1 | [demo/01-dom-xss](https://github.com/dmytrosorokame/security-audit-demo/pull/1) | New `Bio.tsx` injects user HTML via `dangerouslySetInnerHTML` | R-01 / A03 / CWE-79 (high) | TP |
 | 2 | [demo/02-ssrf](https://github.com/dmytrosorokame/security-audit-demo/pull/2) | Outbound proxy with allowlist removed | B-04 / A10 / CWE-918 (high) | TP |
 | 3 | [demo/03-safe-refactor](https://github.com/dmytrosorokame/security-audit-demo/pull/3) | Extract auth middleware to its own module | — | TN (0 findings) |
-| 4 | [demo/04-idor](https://github.com/dmytrosorokame/security-audit-demo/pull/4) | New endpoint allows updating any user's avatar (no ownership check) | B-11 / A01 / CWE-639 (high) | TP |
-| 5 | [demo/05-sanitizer-removed](https://github.com/dmytrosorokame/security-audit-demo/pull/5) | DOMPurify call removed before `dangerouslySetInnerHTML` | R-01 / A03 / CWE-79 (high) | TP |
+| 4 | [demo/04-idor](https://github.com/dmytrosorokame/security-audit-demo/pull/4) | Route returns any user by id without ownership check | B-11 / A01 / CWE-639 (medium) | TP |
+| 5 | [demo/05-sanitizer-removed](https://github.com/dmytrosorokame/security-audit-demo/pull/5) | DOMPurify wrapper removed before `dangerouslySetInnerHTML` | R-01 / A03 / CWE-79 (high) | TP |
+| 6 | [demo/06-sqli](https://github.com/dmytrosorokame/security-audit-demo/pull/6) | Parameterized `ILIKE $1` swapped for template-literal concat, disguised as perf optimisation | B-01 / A03 / CWE-89 (critical) | TP |
+| 7 | [demo/07-docker-root](https://github.com/dmytrosorokame/security-audit-demo/pull/7) | `Dockerfile` drops `USER app`, process runs as root | D-01 / A05 / CWE-250 (high) | TP |
+| 8 | [demo/08-fp-suppress](https://github.com/dmytrosorokame/security-audit-demo/pull/8) | Admin cron with raw-SQL template literal that looks like B-01 but is sourced from module constants; inline `// security-audit-ignore: B-01` directive present | (B-01 suppressed) | TP→Suppressed |
 
-**Result on curated smoke set (n=5):** loose F1 = 1.00 (every diff classified into the correct OWASP/CWE category), strict F1 = 0.857 (PR #1 detected R-01 where R-02 is the more specific rule). Total OpenAI cost ≈ $0.014, average latency ≈ 25s per scan. This is a regression-detection benchmark, not an unbiased generalisability measurement — n=5 is too small to support generalisability claims, and the same author wrote the rule catalog and the test diffs. Run `node benchmark/run_benchmark.mjs --seeds=3` against your own corpus before drawing conclusions.
+**Local benchmark (smoke corpus, n=9 cases inside `benchmark/expected/`):** strict F1 = **0.909**, loose F1 = 0.909 (one persistent FN on `04_idor_ambiguous` at `seeds=1`, single-seed instability — see [`docs/INDEPENDENT_VALIDATION.md`](./docs/INDEPENDENT_VALIDATION.md)).
+**Cross-corpus picture (cycle 6, gpt-4o-mini, seeds=1):** smoke 0.909 → independent 1.000 → complex 0.727 → oss_pilot 21% FP rate (TN-only). Full breakdown in [`benchmark/results.md`](./benchmark/results.md) and [`artifacts/f1_table.md`](../artifacts/f1_table.md).
+
+This is a regression-detection benchmark, not an unbiased generalisability measurement: the same author wrote both the rule catalog and the smoke diffs, three of ten few-shot examples mirror smoke cases 01/04/05, and all four corpora are single-author labelled with no inter-annotator agreement measured. Run `node benchmark/run_benchmark.mjs --seeds=3` against your own corpus before drawing conclusions.
 
 ## What it catches
 

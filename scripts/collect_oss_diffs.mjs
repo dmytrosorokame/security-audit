@@ -14,7 +14,8 @@
  *   4. Writes each accepted PR as `benchmark/oss_pilot/diffs/<repo>__pr<N>.diff`
  *      and creates a stub expected JSON at
  *      `benchmark/oss_pilot/expected/<repo>__pr<N>.json` with `expected: []`
- *      and `expect_zero_findings: null` (UNLABELED) for the operator to fill in.
+ *      and `expect_zero_findings: true` (PROVISIONAL-TN baseline — the operator
+ *      must promote to a labelled positive if the analyzer surfaces a real finding).
  *
  * Why this exists:
  *   The point of the OSS pilot is to test the analyzer on diffs the catalog
@@ -203,7 +204,7 @@ async function main() {
       fs.writeFileSync(diffPath, diff);
       if (!fs.existsSync(expectedPath)) {
         fs.writeFileSync(expectedPath, JSON.stringify({
-          name: `[UNLABELED] ${repo} PR #${pr.number}: ${pr.title}`,
+          name: `[PROVISIONAL-TN] ${repo} PR #${pr.number}: ${pr.title}`,
           diff: path.relative(path.dirname(expectedPath), diffPath),
           source: { repo, pr: pr.number, mergedAt: pr.mergedAt, title: pr.title, stats },
           expected: [],

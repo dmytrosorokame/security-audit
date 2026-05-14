@@ -95,10 +95,55 @@ These three are the **persistent failure modes**. The honest read is:
 
 Khare et al. (2023) and Steenhoek et al. (2024) operate at stage 2 directly — they use Big-Vul, Devign, etc. Our trajectory matches theirs, with the difference that we **report stage 1 results explicitly** rather than skipping straight to stage 2 with no validation that the catalog generalises at all.
 
+## Known threats to validity (declared explicitly, not patched-over)
+
+These are limitations of the current results. They are listed here so a reviewer doesn't have to dig them out of source code. Each one has a planned fix in stage 2 / stage 3.
+
+### 1. Single-seed runs — variance not measured
+
+All cycle-6 numbers in `benchmark/results.md` and `artifacts/f1_table.md` come from `--seeds=1`. LLM outputs are stochastic even at `temperature=0` (provider-side caching, batching boundaries, hidden non-determinism). The 0.909 strict-F1 on smoke is itself a symptom: `04_idor_ambiguous` flipped from TP (earlier cycles, also gpt-4o-mini, also temperature=0) to FN at the current seed. **Run-to-run F1 variance has not been quantified.**
+
+Mitigation roadmap:
+- Stage 2 — re-run each corpus with `--seeds=5` and report mean ± stddev.
+- Stage 3 — temperature sweep `{0.0, 0.3, 0.7}` to characterise the determinism/diversity trade-off.
+- Decision rule for now: any single-seed F1 quoted in this project should be read with an implicit ±0.1 band.
+
+### 2. Single-annotator ground truth — no Cohen's κ
+
+Every label across `expected/`, `independent_corpus/`, `complex_corpus/`, and `oss_pilot/` was written by one person (the author). Standard practice for empirical SE work is ≥2 annotators on a held-out 20% sample, reporting inter-annotator agreement (Cohen's κ ≥ 0.6 considered acceptable).
+
+Mitigation roadmap:
+- Stage 2 — recruit a second annotator for the OSS pilot (cheapest entry point: 19 cases × 5–15 min/case ≈ 2–4 h).
+- Stage 3 — labels for the raw CVE-fix corpus are derived from GHSA advisory text (`cwe_id`, severity), reducing — but not eliminating — single-annotator bias.
+
+### 3. Few-shot ↔ smoke overlap
+
+Examples 1, 4, 5 in `prompts/few_shot.md` are structurally identical to smoke cases 01_dom_xss_introduction, 04_idor_ambiguous, 05_sanitizer_removed. This is **deliberate** grounding on canonical catalog patterns, but it means smoke F1 cannot be used as a generalisability claim — it measures whether the model can reproduce its own examples. **The smoke F1 number is honest only when paired with the independent / complex / oss_pilot numbers** (the multi-corpus reporting in `results.md` enforces this pairing).
+
+### 4. OSS pilot — provisional-TN ground truth
+
+All 19 OSS-pilot expected JSONs carry `unlabeled: true` and `expect_zero_findings: true` by default. This is a **presumption**, not a human-validated label. The benchmark treats them as TN cases for FP-rate computation, but if a real regression slipped through any of these PRs, the corpus would silently misclassify the analyser's correct detection as a FP. The 4/19 = 21% FP rate is therefore an upper bound: the true precision could be higher if any of the four flagged findings is in fact a real regression.
+
+Mitigation roadmap:
+- Stage 2 — promote each of the 19 PRs from `unlabeled: true` to `unlabeled: false` after manual review, separating real-TN from "we presume TN".
+- Stage 3 — actively seek `expect_zero_findings: false` cases (real upstream security fix commits) so OSS pilot becomes a corpus with both positive and negative ground truth.
+
+## Comparison with prior art
+
+| Stage | Corpus type | Bias | What it proves |
+|-------|-------------|------|----------------|
+| 0 (initial) | Author-curated smoke set | High (catalog co-authored, 3/10 few-shots overlap) | Regression-detection only |
+| 1 (now) | Author-written, CVE-pattern-derived | Reduced (catalog not consulted while writing) | Generalisation across known pattern families |
+| 1.5 (now) | OSS PR provisional-TN baseline | Low (3rd-party diffs) + Medium (single annotator, provisional) | Real-world FP rate on the long tail of routine diffs |
+| 2 (planned) | Raw CVE-fix git commits, 2-annotator κ | Minimal (annotator-labelled but author wrote neither code nor catalog) | Empirical recall on real-world regressions |
+
+Khare et al. (2023) and Steenhoek et al. (2024) operate at stage 2 directly — they use Big-Vul, Devign, etc. Our trajectory matches theirs, with the difference that we **report stage 1 and 1.5 results explicitly** rather than skipping straight to stage 2 with no validation that the catalog generalises at all.
+
 ## How a reviewer should read this
 
 1. Open `benchmark/results.md`. The header tells you the corpus list and the disclaimer.
-2. Look at the **gap** number, not the smoke F1. If smoke is 1.00 and independent is 0.80, the realistic upper bound for production performance is closer to 0.80 — and even that bound is optimistic until stage 2 lands.
-3. Disregard any single-corpus F1 in isolation. A tool that scores 1.00 on a single corpus is suspicious until the gap is reported.
+2. Look at the **gap** numbers, not any single F1. If smoke is 0.909 and independent is 1.000, the smoke FN is single-seed instability, not a generalisation failure. If complex is 0.727, that's the diff-only architectural limit. If oss_pilot FP rate is 21%, that's the routine-deployment cost.
+3. Disregard any single-corpus F1 in isolation. A tool that scores 1.00 on a single corpus is suspicious until at least two other corpora are reported.
+4. Look at the threats-to-validity section above (§1–4) — those are the limits known at the cutoff date. Everything else is conjecture until stage 2 lands.
 
 This document is part of the project's permanent record because the "we tested on our own data" question will be asked again by every careful reviewer. The answer should be in the repo, not lost in a defence transcript.

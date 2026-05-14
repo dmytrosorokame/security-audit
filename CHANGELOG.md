@@ -33,8 +33,12 @@ All notable changes to this project are documented here. Format follows [Keep a 
 - `globToRegex` (in `extract_diff.mjs` and `suppression.mjs`): pattern `**/foo` now correctly matches top-level `foo` (previously required a leading path segment, leading to silently-ignored exclude rules).
 - `--timeout=foo`, `--max-cost=foo`: previously parsed as `NaN` and silently disabled the guard; now validated and exit with code 3 and a clear message.
 - `--include-file-context` now emits a stderr warning when used with `--diff=<file>` (no git tree → no effect), instead of silently no-op-ing.
-- `f1_table.md` and `benchmark/expected/01_dom_xss_introduction.json` aligned with the actual diff (R-02 `innerHTML`, not R-01 `dangerouslySetInnerHTML`); R-01 is preserved as `accept_alternatives`.
+- `f1_table.md` rewritten from authoritative `benchmark/results.md` numbers: smoke strict F1 = 0.909 (not 1.000); single-seed FN on `04_idor_ambiguous` documented. `[UNLABELED]` prefix on OSS-pilot stubs replaced with `[PROVISIONAL-TN]`; matching `unlabeled: true` on all 19 stubs (previously inconsistent — name said unlabeled, JSON flag said labelled).
+- `benchmark/expected/01_dom_xss_introduction.json` aligned with the actual diff (R-02 `innerHTML`, not R-01 `dangerouslySetInnerHTML`); R-01 is preserved as `accept_alternatives`. Note: this is the **smoke benchmark case**, not `security-audit-demo` PR #1 — those are different artefacts. Demo PR #1 uses `dangerouslySetInnerHTML` (R-01); demo `README.md` and `security-audit/README.md` table updated to reflect this.
 - Removed historical references to non-existent `R-12` (deps CVE — out of scope) and `R-15` (sanitizer-removed — replaced by R-01) from documentation and ground truth.
+- `prompts/few_shot.md` header updated from "6 examples" to "10 examples" (examples 7–10 added in cycle 5 but the header was stale).
+- `SKILL.md`: few-shot section updated from "3–5 input/output examples" to "10 input/output examples" — matches actual file contents.
+- `README.md`: smoke set described as `n=9` (matches `benchmark/expected/` content), not `n=5` (the count was stale since 4 edge-case diffs were added in cycle 5). Reproducible PR table extended from 5 to 8 entries to match `security-audit-demo` PRs #1–#8.
 - Documentation typos: "Дитермінований" → "Детермінований" (`SKILL.md`); useless escape characters in connection-string and Stripe regex.
 
 ### Security
@@ -51,5 +55,5 @@ Initial development release. Diff-only LLM security review pipeline:
 - Inline suppression directives + repo-level `.security-audit-ignore`.
 - Anti-hallucination: file/line/evidence cross-check against the diff; auto-correction of context-line mis-numbering.
 - Secret redaction across 9 secret families + connection strings.
-- 5 reference example diffs with expected ground-truth for smoke benchmarking.
+- 9 reference example diffs with expected ground-truth for smoke benchmarking (initial 5 + 4 edge-case diffs added in cycle 5 — Dockerfile root-user, renamed-file SQLi, deleted-file backdoor, binary-file no-op).
 - GitHub Action, CLI, and Claude Code Skill entry points.

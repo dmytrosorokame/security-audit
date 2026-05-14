@@ -164,7 +164,7 @@ Unauthenticated rate limit: 60 requests/hour. Set GITHUB_TOKEN env for 5000/hr.
       fs.writeFileSync(diffPath, diff);
       if (!fs.existsSync(expectedPath)) {
         fs.writeFileSync(expectedPath, JSON.stringify({
-          name: `[UNLABELED] ${repo} PR #${pr.number}: ${pr.title}`,
+          name: `[PROVISIONAL-TN] ${repo} PR #${pr.number}: ${pr.title}`,
           diff: path.relative(path.dirname(expectedPath), diffPath),
           source: {
             repo,

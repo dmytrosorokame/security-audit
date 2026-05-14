@@ -71,7 +71,7 @@ Each provider receives:
 
 1. **System prompt** (`prompts/system.md`) — OWASP/CWE framework and rules for analysing a diff
 2. **References** — inlined `references/owasp-rules.md` (catalog of 34 patterns) and `references/owasp-mapping.md`
-3. **Few-shot** (`prompts/few_shot.md`) — 3–5 input/output examples for output consistency
+3. **Few-shot** (`prompts/few_shot.md`) — 10 input/output examples covering DOM XSS, SSRF, safe refactor (TN), ambiguous IDOR (`NEEDS_HUMAN`), sanitizer removal, self-critique downgrade (FP catch), prototype pollution, repository-pattern TN, NoSQL injection, sanitizer-shape API relaxation
 4. **User message** — the extracted diff JSON
 
 Provider-specific details:

@@ -42,7 +42,8 @@ node scripts/collect_oss_diffs.mjs --dry-run
 Output:
 
 - `benchmark/oss_pilot/diffs/<repo>__pr<N>.diff` — raw unified diffs
-- `benchmark/oss_pilot/expected/<repo>__pr<N>.json` — **unlabeled** ground-truth stubs
+- `benchmark/oss_pilot/expected/<repo>__pr<N>.json` — **provisional-TN stubs** (`unlabeled: true`, prefix `[PROVISIONAL-TN]`).
+  Each stub presumes the recent merged PR contains no security regression — that presumption MUST be replaced with a human-reviewed label before the case counts toward any F1 claim.
 
 A typical run lands 10–20 PRs through the filter. Expect 2–4 minutes wall time.
 
