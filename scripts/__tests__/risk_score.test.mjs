@@ -59,6 +59,17 @@ describe('calculateRiskScore', () => {
     expect(calculateRiskScore({ severity: 'high' })).toBeCloseTo(5.4, 1);
   });
 
+  it('zeros score for INVALID (not missing) confidence — does not hide LLM bug', () => {
+    // 'bogus' is a contract violation upstream of risk_score (validate_finding
+    // rejects it). Reaching here means a real bug; we want visibility, not a
+    // mid-band score that hides it in the summary.
+    expect(calculateRiskScore({ severity: 'high', confidence: 'bogus', verdict: 'TRUE_POSITIVE' })).toBe(0);
+  });
+
+  it('zeros score for INVALID verdict — does not hide LLM bug', () => {
+    expect(calculateRiskScore({ severity: 'high', confidence: 'high', verdict: 'BOGUS' })).toBe(0);
+  });
+
   it('returns rounded to 1 decimal', () => {
     const r = calculateRiskScore({ severity: 'medium', confidence: 'medium', verdict: 'NEEDS_HUMAN' });
     // 5.0 × 0.85 × 0.7 = 2.975 → 3.0
