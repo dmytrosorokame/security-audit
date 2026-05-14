@@ -26,21 +26,26 @@ const CWE_RX = /^CWE-\d+$|^CWE-UNKNOWN$/;
 // label of the secret family (e.g. AWS_ACCESS_KEY) so downstream consumers
 // still know *what kind* of secret was detected without seeing the value.
 const SECRET_PATTERNS = [
-  { rx: /AKIA[0-9A-Z]{16}/g,                                           label: 'AWS_ACCESS_KEY' },
-  { rx: /AIza[0-9A-Za-z\-_]{35}/g,                                     label: 'GOOGLE_API_KEY' },
-  { rx: /sk_live_[0-9a-zA-Z]{20,}/g,                                   label: 'STRIPE_SECRET' },
-  { rx: /pk_live_[0-9a-zA-Z]{20,}/g,                                   label: 'STRIPE_PUBLISHABLE' },
-  { rx: /sk-(?:proj-)?[A-Za-z0-9_\-]{40,}/g,                           label: 'OPENAI_KEY' },
-  { rx: /xox[abposr]-[0-9a-zA-Z\-]{10,}/g,                             label: 'SLACK_TOKEN' },
-  { rx: /ghp_[0-9a-zA-Z]{36}/g,                                        label: 'GITHUB_PAT' },
-  { rx: /eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g,       label: 'JWT' },
+  { rx: /AKIA[0-9A-Z]{16}/g,                                          label: 'AWS_ACCESS_KEY' },
+  { rx: /AIza[0-9A-Za-z_-]{35}/g,                                     label: 'GOOGLE_API_KEY' },
+  { rx: /sk_live_[0-9a-zA-Z]{20,}/g,                                  label: 'STRIPE_SECRET' },
+  { rx: /pk_live_[0-9a-zA-Z]{20,}/g,                                  label: 'STRIPE_PUBLISHABLE' },
+  { rx: /sk-(?:proj-)?[A-Za-z0-9_-]{40,}/g,                           label: 'OPENAI_KEY' },
+  { rx: /xox[abposr]-[0-9a-zA-Z-]{10,}/g,                             label: 'SLACK_TOKEN' },
+  { rx: /ghp_[0-9a-zA-Z]{36}/g,                                       label: 'GITHUB_PAT' },
+  // JWT: require the header to start with `eyJ` followed by `h`, `0`, or `r`
+  // (base64 prefixes of `{"a` (alg), `{"t` (typ), or `{"k` (kid) — the realistic
+  // first fields in a JOSE header), plus a minimum length on each segment.
+  // Without these constraints the old pattern `eyJ…\.…\.…` triggers on any
+  // short base64 strings separated by dots, e.g. `eyJhIg==.x.y`.
+  { rx: /\beyJ[h0r][A-Za-z0-9_-]{15,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}\b/g, label: 'JWT' },
   { rx: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g, label: 'PRIVATE_KEY' },
 ];
 
 // Connection strings are handled separately: the password can contain `@` if
 // URL-encoded (`%40`), so a single regex over the whole URL is brittle. We
 // pull out the password group ourselves and replace just that segment.
-const CONN_STRING_RX = /\b(postgres|postgresql|mongodb|mongodb\+srv|mysql|mariadb|redis|amqp|amqps):\/\/([^:@\/\s]+):([^\s@]+(?:%40[^\s@]+)*)@([^\s\/?#]+)/g;
+const CONN_STRING_RX = /\b(postgres|postgresql|mongodb|mongodb\+srv|mysql|mariadb|redis|amqp|amqps):\/\/([^:@/\s]+):([^\s@]+(?:%40[^\s@]+)*)@([^\s/?#]+)/g;
 
 /**
  * Redact any well-known secret patterns in a string. Replaces match with
@@ -80,6 +85,21 @@ export function validateFinding(f, opts = {}) {
     errors.push(`invalid line: ${f.line} (expected non-negative integer)`);
   }
   if (f.file && typeof f.file !== 'string') errors.push('file must be a string');
+
+  // Calibration check on exploit_trace. The system prompt requires every
+  // finding to ship a trace (source → sink → missing-guard) and ties the
+  // legitimacy of `confidence: "high"` to a 3-element trace. Enforcing this
+  // here is the post-processor side of that contract: if the LLM emits high
+  // confidence without a full chain, we downgrade rather than trust it. This
+  // is the calibration discipline — the LLM's self-reported confidence is
+  // only honoured when backed by visible evidence.
+  if (f.exploit_trace !== undefined) {
+    if (!Array.isArray(f.exploit_trace)) {
+      errors.push('exploit_trace must be an array of short strings');
+    } else if (f.exploit_trace.some(s => typeof s !== 'string' || s.length === 0)) {
+      errors.push('exploit_trace entries must be non-empty strings');
+    }
+  }
   // Evidence length: normalizeFinding truncates to 300 chars, so we only WARN
   // above that — not an error. Truncation is non-destructive (audit info is
   // preserved in the original LLM output if needed for debugging).
@@ -213,8 +233,40 @@ export function correctFindingLine(f, fileEntry) {
   return best;
 }
 
+/**
+ * Calibrate the self-reported confidence against the visible exploit chain.
+ *
+ * Contract (mirrors prompts/system.md "Confidence (calibrated, not subjective)"):
+ *   - `high`     needs exploit_trace ≥ 3 entries (source + sink + missing-guard)
+ *   - `medium`   needs exploit_trace ≥ 2 entries
+ *   - `low`      no minimum
+ *
+ * When the LLM over-reports, we downgrade rather than reject. The annotation
+ * lives in `confidence_downgraded_from` so the CLI / SARIF output can surface
+ * the calibration to readers — over-confidence is the single biggest failure
+ * mode of LLM-based SAST, and silently fixing it would hide the signal.
+ *
+ * @param {object} f
+ * @returns {object} a (possibly) downgraded copy
+ */
+export function calibrateConfidence(f) {
+  if (!f || typeof f !== 'object') return f;
+  const trace = Array.isArray(f.exploit_trace) ? f.exploit_trace.filter(Boolean) : [];
+  const reported = f.confidence;
+  let calibrated = reported;
+  if (reported === 'high' && trace.length < 3) calibrated = 'medium';
+  if (calibrated === 'medium' && trace.length < 2) calibrated = 'low';
+  if (calibrated === reported) return f;
+  return {
+    ...f,
+    confidence: calibrated,
+    confidence_downgraded_from: reported,
+    confidence_downgrade_reason: `exploit_trace has ${trace.length} element(s); '${reported}' requires ${reported === 'high' ? 3 : 2}`,
+  };
+}
+
 export function normalizeFinding(f) {
-  const out = { ...f };
+  let out = { ...f };
   if (typeof out.evidence === 'string') {
     // Order: trim → redact → truncate. Redaction first means a 280-char string
     // with an API key in the middle still gets the secret replaced even after
@@ -229,6 +281,9 @@ export function normalizeFinding(f) {
   if (typeof out.remediation === 'string') {
     out.remediation = redactSecrets(out.remediation);
   }
+  // Calibration must run BEFORE risk_score: the score multiplies by a
+  // confidence factor, so we want the downgraded value to flow through.
+  out = calibrateConfidence(out);
   // Compute risk_score if absent
   if (out.risk_score === undefined || out.risk_score === null) {
     out.risk_score = calculateRiskScore(out);
