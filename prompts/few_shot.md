@@ -12,7 +12,27 @@ Below are 10 example diffs and the expected JSON output. They cover:
 - (9) NoSQL injection via `$where` — `TRUE_POSITIVE` distinguishing B-03 from B-01 by operator surface
 - (10) sanitizer-shaped API relaxation (`DOMPurify.sanitize` called but `ADD_TAGS:['script']` defeats it) — `TRUE_POSITIVE`, shows config-change-as-relaxation pattern (R-01)
 
-> Note: examples 1, 4, and 5 are structurally identical to smoke benchmark cases `01_dom_xss_introduction`, `04_idor_ambiguous`, and `05_sanitizer_removed`. This 1-to-1 overlap is **deliberate** — the few-shots ground the model on canonical patterns from the catalog — but it means smoke F1 is **not** an unbiased generalisability measurement. See `docs/INDEPENDENT_VALIDATION.md` and `artifacts/f1_table.md` for the multi-corpus methodology that addresses this bias.
+> **Honest disclosure of train/test leakage** — read this before citing any F1 number from `benchmark/results.md`:
+>
+> The following few-shot examples are structurally close to benchmark cases. This grounds the model on canonical catalog patterns by design, but it also means F1 on those corpora is inflated by memorisation rather than measuring generalisation:
+>
+> | Few-shot | Structurally similar benchmark case | Corpus | Overlap shape |
+> |---|---|---|---|
+> | Example 1 (DOM XSS via `innerHTML`) | `01_dom_xss_introduction` | smoke | identical pattern |
+> | Example 4 (ambiguous IDOR) | `04_idor_ambiguous` | smoke | identical pattern |
+> | Example 5 (DOMPurify removed) | `05_sanitizer_removed` | smoke | identical pattern |
+> | Example 7 (prototype pollution via `setDeep`) | `i01_prototype_pollution_argv_merge` | **independent** | same file path / function name |
+> | Example 8 (repository-pattern allowlist) | `c06_safe_large_refactor` | complex | same allowlist-constant pattern |
+> | Example 9 (NoSQL `$where` injection) | `i09_nosql_injection_mongoose_where` | **independent** | same file path + same expected JSON spelled out |
+> | Example 10 (DOMPurify `ADD_TAGS:['script']`) | `c02_compositional_xss_regression` | complex | same sanitizer-shape relaxation pattern |
+>
+> Implications for reading the results:
+> - **Smoke F1 (0.909)** is an upper bound, not a generalisability claim.
+> - **"Independent" F1 (1.000)** is partly a memorisation test, not a clean held-out measurement — at least i01 and i09 overlap with few-shot Examples 7 and 9. The genuinely held-out subset is ~8 cases, not 10.
+> - **Complex F1 (0.727)** is closer to a fair measure but also leaks via Examples 8 and 10.
+> - The only corpus with no few-shot overlap is **OSS pilot** (TN-only). Its precision = 0/4 on emitted findings is the honest external-validity number.
+>
+> See `docs/INDEPENDENT_VALIDATION.md` (Stage 2 plan with raw CVE-fix corpus + Cohen's κ from a second annotator) for the work that would actually close this gap. The cross-corpus methodology in `benchmark/results.md` (and the consolidated thesis appendix `f1_table.md`, not committed here) is the project's current accountability mechanism for this bias.
 
 These are injected into the LLM prompt so the model has concrete grounding for tone, structure, verdict discipline, and the **exploit_trace** discipline.
 

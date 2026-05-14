@@ -20,9 +20,29 @@ Live at `benchmark/independent_corpus/`. Ten cases reproducing publicly disclose
 - Coverage of compositional / multi-file vulnerabilities. Every case here is a single-file diff. Real CVEs often span 3–10 files.
 - Coverage of rule classes the catalog doesn't enumerate (race conditions, business-logic flaws, protocol-level issues).
 
+### Train/test leakage with few-shot examples — acknowledged
+
+Earlier revisions of this document only acknowledged overlap between few-shot examples and the **smoke** corpus. Closer inspection shows additional structural overlap with the **independent** and **complex** corpora as well. The exhaustive list is now maintained at the top of [`prompts/few_shot.md`](../prompts/few_shot.md); the short version:
+
+| Few-shot | Corpus case | Corpus | Nature of overlap |
+|---|---|---|---|
+| Example 1 | `01_dom_xss_introduction` | smoke | identical pattern |
+| Example 4 | `04_idor_ambiguous` | smoke | identical pattern |
+| Example 5 | `05_sanitizer_removed` | smoke | identical pattern |
+| Example 7 | `i01_prototype_pollution_argv_merge` | **independent** | same file path / function name |
+| Example 8 | `c06_safe_large_refactor` | complex | same allowlist-constant pattern |
+| Example 9 | `i09_nosql_injection_mongoose_where` | **independent** | same file path + same expected JSON spelled out in the prompt |
+| Example 10 | `c02_compositional_xss_regression` | complex | same sanitizer-shape relaxation pattern |
+
+This **invalidates** the previously claimed reading of the independent corpus as a clean external-validity test:
+
+- The genuinely held-out subset of `independent_corpus` is **8 of 10 cases** (`i02..i08`, `i10`), not all 10. With i01 + i09 contributing to the reported F1 = 1.000, that headline is partly memorisation, not generalisation.
+- The complex corpus is similarly contaminated for 2 of 7 positive cases (c02, c06).
+- The only corpus with **no** few-shot overlap is the OSS pilot (TN-only). Its precision = 0/4 on emitted findings is therefore the only number in this report with genuine external-validity weight, and it is much less flattering than the headline F1s.
+
 ### How honest we are about the result
 
-When reporting numbers we **always** quote both F1s side by side and the gap. A README headline of "F1 = 1.0" without disclaimer is forbidden. The benchmark runner enforces this by emitting a two-table report.
+When reporting numbers we **always** quote both F1s side by side and the gap. A README headline of "F1 = 1.0" without disclaimer is forbidden. The benchmark runner enforces this by emitting a two-table report. The overlap table above is the second part of that discipline: any future few-shot edit that touches a benchmark file path must also update this disclosure.
 
 ## Stage 2 (roadmap) — raw CVE-fix corpus
 
@@ -101,7 +121,7 @@ These are limitations of the current results. They are listed here so a reviewer
 
 ### 1. Single-seed runs — variance not measured
 
-All cycle-6 numbers in `benchmark/results.md` and `artifacts/f1_table.md` come from `--seeds=1`. LLM outputs are stochastic even at `temperature=0` (provider-side caching, batching boundaries, hidden non-determinism). The 0.909 strict-F1 on smoke is itself a symptom: `04_idor_ambiguous` flipped from TP (earlier cycles, also gpt-4o-mini, also temperature=0) to FN at the current seed. **Run-to-run F1 variance has not been quantified.**
+All cycle-6 numbers in `benchmark/results.md` (and the thesis-side rollup `f1_table.md`) come from `--seeds=1`. LLM outputs are stochastic even at `temperature=0` (provider-side caching, batching boundaries, hidden non-determinism). The 0.909 strict-F1 on smoke is itself a symptom: `04_idor_ambiguous` flipped from TP (earlier cycles, also gpt-4o-mini, also temperature=0) to FN at the current seed. **Run-to-run F1 variance has not been quantified.**
 
 Mitigation roadmap:
 - Stage 2 — re-run each corpus with `--seeds=5` and report mean ± stddev.
