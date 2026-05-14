@@ -1,43 +1,60 @@
 # security-audit
 
-> **LLM-driven security review for git diffs.** Analyzes pull requests and pre-commit changesets with Claude or GPT, maps findings to OWASP Top 10 (2021) + CWE, blocks the dangerous ones.
+> LLM-driven security review for git diffs. Reads only the changed lines, maps each finding to OWASP Top 10 (2021) + CWE, and blocks the dangerous ones at PR time.
 
 [![test](https://github.com/dmytrosorokame/security-audit/actions/workflows/test.yml/badge.svg)](https://github.com/dmytrosorokame/security-audit/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Unlike file-based SAST (Semgrep, ESLint plugin-security), security-audit reads **only the diff** — added or changed lines, with surrounding context — and asks an LLM to reason about what the change actually introduces. Three properties fall out of that:
+Unlike file-based SAST (Semgrep, ESLint plugin-security), security-audit looks **only at the diff** — added or modified lines with surrounding hunk context — and asks an LLM to reason about what the change introduces. Three properties fall out of that:
 
 - **No legacy noise.** Findings are attributable to *this* PR, not to whoever wrote the file three years ago.
-- **Semantic understanding.** The model sees intent. It can tell apart "added a sanitizer call" from "added an `eval(req.body)`", even when both touch identical lines.
-- **Cheap by design.** Diffs are small (typically 50–200 lines); prompt caching keeps grounding tokens warm across PRs. Full-repo LLM scan would be prohibitively expensive by comparison.
+- **Semantic understanding.** The model sees the intent of the change. It can tell "added a sanitizer call" apart from "added `eval(req.body)`" even when both touch identical lines.
+- **Cheap by design.** Real PRs are 50–200 lines. Prompt caching keeps the ~12k grounding tokens warm across calls. Average cost of a scan on `gpt-4o-mini` is around **$0.003**.
 
-**Provider-agnostic**: works with **Anthropic Claude** (Sonnet/Haiku/Opus) or **OpenAI GPT** (gpt-4o, gpt-4o-mini, o-series). Pick whichever you have an API key for; the same prompts, schema, and output formats apply.
+Provider-agnostic: works with **Anthropic Claude** (Sonnet / Haiku) or **OpenAI GPT** (gpt-4o, gpt-4o-mini, o-series). Pick whichever key you have — same prompts, same schema, same output formats.
+
+## Live demo
+
+A companion repo, [`dmytrosorokame/security-audit-demo`](https://github.com/dmytrosorokame/security-audit-demo), runs the action on five reference pull requests — four that introduce a vulnerability and one that is a pure refactor. Each PR is publicly reproducible:
+
+| # | PR | Pattern | Expected | Detected |
+|---|---|---|---|---|
+| 1 | [demo/01-dom-xss](https://github.com/dmytrosorokame/security-audit-demo/pull/1) | `innerHTML = userInput` via ref callback | R-02 / A03 / CWE-79 (high), R-01 accepted as alt | R-01 (loose TP) |
+| 2 | [demo/02-ssrf](https://github.com/dmytrosorokame/security-audit-demo/pull/2) | Outbound proxy with allowlist removed | B-04 / A10 / CWE-918 (high) | TP |
+| 3 | [demo/03-safe-refactor](https://github.com/dmytrosorokame/security-audit-demo/pull/3) | Extract auth middleware to its own module | — | TN (0 findings) |
+| 4 | [demo/04-idor](https://github.com/dmytrosorokame/security-audit-demo/pull/4) | New endpoint allows updating any user's avatar (no ownership check) | B-11 / A01 / CWE-639 (high) | TP |
+| 5 | [demo/05-sanitizer-removed](https://github.com/dmytrosorokame/security-audit-demo/pull/5) | DOMPurify call removed before `dangerouslySetInnerHTML` | R-01 / A03 / CWE-79 (high) | TP |
+
+**Result on curated smoke set (n=5):** loose F1 = 1.00 (every diff classified into the correct OWASP/CWE category), strict F1 = 0.857 (PR #1 detected R-01 where R-02 is the more specific rule). Total OpenAI cost ≈ $0.014, average latency ≈ 25s per scan. This is a regression-detection benchmark, not an unbiased generalisability measurement — n=5 is too small to support generalisability claims, and the same author wrote the rule catalog and the test diffs. Run `node benchmark/run_benchmark.mjs --seeds=3` against your own corpus before drawing conclusions.
 
 ## What it catches
 
-34 vulnerability patterns grounded in OWASP Top 10 (2021), covering:
+34 vulnerability patterns mapped to OWASP Top 10 (2021):
 
-- **Frontend (11 rules)**: DOM XSS, prototype pollution, insecure token storage, open redirects, missing CSP/SRI, postMessage misuse, `dangerouslySetInnerHTML`, `target="_blank"` tabnabbing, hardcoded secrets, CORS misconfiguration. (Dependency-CVE scanning is out of scope — use Dependabot or Snyk for that.)
-- **Backend (15 rules)**: SQL injection (incl. ORM raw queries), command injection, NoSQL injection, SSRF across all HTTP clients (fetch/axios/got/undici/superagent/http.request), path traversal, unsafe deserialization, weak crypto, missing CSRF/Helmet, hardcoded credentials, IDOR, XXE, mass assignment, server-side open redirect, server-side template injection (SSTI).
-- **Container (8 rules)**: root user, latest tag, hardcoded secrets in ENV, `ADD` vs `COPY`, privileged compose service, host network, docker.sock mount, unsafe apt-get.
+- **Frontend (11 rules, R-01…R-11)** — DOM XSS via `dangerouslySetInnerHTML` / `innerHTML`, `target="_blank"` tabnabbing, `javascript:` URLs, prototype pollution, tokens in `localStorage`/`sessionStorage`, hardcoded secrets, open redirect via `window.location`, `postMessage` without origin check, missing CSP/SRI, CORS misconfiguration. Dependency-CVE scanning is out of scope — use Dependabot or Snyk for that.
+- **Backend (15 rules, B-01…B-15)** — SQL injection (incl. ORM raw queries), command injection, NoSQL injection, SSRF across HTTP clients (fetch/axios/got/undici/superagent), path traversal, unsafe deserialization, weak crypto, missing CSRF/Helmet, hardcoded credentials in connection strings, IDOR, XXE, mass assignment, server-side open redirect, SSTI.
+- **Container (8 rules, D-01…D-08)** — root user, `:latest` tag, hardcoded secrets in ENV/ARG, `ADD` vs `COPY`, privileged compose service, host network, docker.sock mount, unsafe `apt-get install`.
 
-Full catalog: [`references/owasp-rules.md`](./references/owasp-rules.md).
+Full grounding catalog: [`references/owasp-rules.md`](./references/owasp-rules.md). Each rule includes OWASP/CWE IDs, severity, vulnerable + safe examples, confidence guidance, and a remediation reference.
 
 ## Install
 
-Four entry points, one engine. Pick what fits.
+Three entry points, one engine. Pick what fits your workflow.
 
-### GitHub Action (PR review)
+### GitHub Action
 
 `.github/workflows/security-audit.yml`:
 
 ```yaml
 name: Security Audit
-on: [pull_request]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
   pull-requests: write
+  security-events: write
 
 jobs:
   audit:
@@ -45,63 +62,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: dmytrosorokame/security-audit@v1
+      - uses: dmytrosorokame/security-audit@main
         with:
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # or:
-          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          fail-on: critical
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          # or: anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: cheap          # cheap | best | sonnet | haiku | <full-id>
+          fail-on: high         # critical | high | medium | low | info | none
+          upload-sarif: 'true'  # populate the Security tab
 ```
 
-Open a PR. Within ~30 seconds, security-audit posts a sticky comment with findings (file:line, OWASP/CWE labels, severity, remediation).
-
-### Pre-commit hook (block before push)
-
-`.pre-commit-config.yaml`:
-
-```yaml
-repos:
-  - repo: https://github.com/dmytrosorokame/security-audit
-    rev: v0.1.0
-    hooks:
-      - id: security-audit-diff
-```
-
-```bash
-pre-commit install
-export ANTHROPIC_API_KEY=sk-...
-
-# Now `git commit` runs security-audit on staged changes.
-# Blocks the commit if any finding is at or above $SECURITY_AUDIT_FAIL_ON (default: critical).
-
-# Bypass once:
-SECURITY_AUDIT_SKIP=1 git commit -m '...'
-```
-
-### npm CLI
-
-```bash
-npm install -g security-audit
-
-# Pick a provider — set whichever key you have:
-export ANTHROPIC_API_KEY=sk-...      # Claude
-export OPENAI_API_KEY=sk-...         # GPT
-
-scan-diff --against=main                                          # auto-pick provider, diff vs origin/main
-scan-diff --staged                                                # staged changes (pre-commit mode)
-scan-diff --diff=patch.diff                                       # external diff file
-scan-diff --against=main --format=sarif --output=audit.sarif      # SARIF for GitHub Code Scanning
-
-# Pick provider / model explicitly:
-scan-diff --against=main --provider=anthropic --model=haiku       # cheap Claude
-scan-diff --against=main --provider=openai    --model=cheap       # cheap GPT (gpt-4o-mini)
-scan-diff --against=main --provider=openai    --model=best        # gpt-4o
-scan-diff --against=main --provider=openai    --model=o3-mini     # reasoning model
-
-# Inspect what each provider supports:
-scan-diff --help
-node node_modules/security-audit/scripts/llm_analyze.mjs --list-models
-```
+Open a PR. Within ~30 seconds, security-audit posts a sticky comment with findings and blocks the merge if any finding is at or above `fail-on`.
 
 ### Anthropic Skill (Claude Code)
 
@@ -110,86 +80,109 @@ git clone https://github.com/dmytrosorokame/security-audit \
   ~/.claude/skills/security-audit
 ```
 
-Trigger inside Claude Code with phrases like *"review this PR for security"*, *"audit my latest commit"*, *"check this diff for OWASP issues"*. Skill manifest: [`SKILL.md`](./SKILL.md).
+Trigger inside Claude Code with phrases like *"review this PR for security"*, *"audit my latest commit"*, or *"check this diff for OWASP issues"*. Skill manifest: [`SKILL.md`](./SKILL.md).
+
+### CLI
+
+```bash
+git clone https://github.com/dmytrosorokame/security-audit && cd security-audit
+pnpm install --ignore-workspace
+export OPENAI_API_KEY=sk-...    # or ANTHROPIC_API_KEY
+
+node scripts/scan_diff.mjs --against=origin/main
+node scripts/scan_diff.mjs --staged                                   # pre-commit mode
+node scripts/scan_diff.mjs --diff=patch.diff                          # external diff
+node scripts/scan_diff.mjs --against=main --format=sarif --output=audit.sarif
+```
 
 ## Output formats
 
-The same JSON report drives three output channels:
+The same JSON report drives four output channels:
 
-| Format     | Where it goes                          | Command                                     |
-|------------|----------------------------------------|---------------------------------------------|
-| `cli`      | Terminal (human-readable, colorized)   | `scan-diff … --format=cli` (default)        |
-| `pr`       | GitHub PR comment (Markdown)           | `scan-diff … --format=pr`                   |
-| `sarif`    | GitHub Code Scanning, security dashboards | `scan-diff … --format=sarif --output=…`  |
-| `json`     | Pipe to anything                       | `scan-diff … --format=json`                 |
+| Format | Where it goes | Flag |
+|---|---|---|
+| `cli` | Terminal (human-readable, colorized) | `--format=cli` (default) |
+| `pr` | GitHub PR comment (Markdown) | `--format=pr` |
+| `sarif` | GitHub Code Scanning, security dashboards | `--format=sarif --output=…` |
+| `json` | Pipe to anything | `--format=json` |
 
 Each finding contains:
 
 ```json
 {
-  "rule_id": "R-02",
+  "rule_id": "R-01",
   "owasp_id": "A03:2021",
   "cwe_id": "CWE-79",
   "severity": "high",
   "confidence": "high",
   "verdict": "TRUE_POSITIVE",
   "risk_score": 7.5,
-  "file": "apps/web/src/Comment.tsx",
-  "line": 13,
-  "evidence": "el.innerHTML = comment.body",
-  "title": "DOM XSS via innerHTML with user-supplied comment body",
-  "rationale": "...",
-  "remediation": "Use JSX text interpolation or DOMPurify.sanitize. See https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+  "file": "src/client/components/Bio.tsx",
+  "line": 17,
+  "evidence": "<div dangerouslySetInnerHTML={{ __html: bioHtml }} />",
+  "title": "DOM XSS via dangerouslySetInnerHTML with user-controlled input",
+  "rationale": "The Bio component renders bioHtml (user-controlled) via dangerouslySetInnerHTML without sanitization.",
+  "remediation": "Sanitize with DOMPurify.sanitize(bioHtml) before injecting, or switch to plain-text rendering."
 }
 ```
 
-`verdict` is one of:
+`verdict` values:
 
-- `TRUE_POSITIVE` — confirmed, exploitable as-is
-- `LIKELY_TP` — strong signal, exploitability depends on context outside the diff
-- `NEEDS_HUMAN` — pattern present but ambiguous; bias toward review
-- `FALSE_POSITIVE` — LLM ruled out (rare; surfaces explicitly so you can audit it)
+- `TRUE_POSITIVE` — confirmed, exploitable as-is.
+- `LIKELY_TP` — strong signal; exploitability depends on context outside the diff.
+- `NEEDS_HUMAN` — pattern present but ambiguous; bias toward review.
+- `FALSE_POSITIVE` — LLM ruled it out and explained why (rare; surfaced so you can audit the decision).
 
 ## How it works
 
 ```
-  git diff ──▶ extract_diff.mjs ──▶ structured JSON
-                                          │
-                                          ▼
-                                 ┌────────┴────────┐
-                                 ▼                 ▼
-                     providers/anthropic.mjs  providers/openai.mjs
-                  (cache_control + msg blocks)  (auto-cache + JSON mode)
-                                 │                 │
-                                 └────────┬────────┘
-                                          ▼
-                           validated, normalized findings
-                                          │
-                  ┌───────────┬───────────┼───────────┐
-                  ▼           ▼           ▼           ▼
-                 CLI         PR        SARIF        JSON
+  git diff ──▶ extract_diff.mjs ──▶ structured JSON ──▶ grounding (owasp-rules.md)
+                                                              │
+                                                              ▼
+                                              ┌───────────────┴───────────────┐
+                                              ▼                               ▼
+                                  providers/anthropic.mjs            providers/openai.mjs
+                              (cache_control + msg blocks)          (auto prefix cache + JSON mode)
+                                              │                               │
+                                              └───────────────┬───────────────┘
+                                                              ▼
+                                            validate_finding.mjs (file / line / evidence)
+                                                              │
+                                                              ▼
+                                                  anti-hallucination pass
+                                              (auto-correct context-line numbers
+                                              to nearest added line; drop findings
+                                              whose evidence is not in the diff)
+                                                              │
+                                                              ▼
+                                                  suppression.mjs (inline
+                                              directives + .security-audit-ignore)
+                                                              │
+                                                              ▼
+                                                  secret redaction (AWS / Stripe /
+                                              JWT / GitHub PAT / connection strings)
+                                                              │
+                                            ┌─────────┬───────┴────────┬─────────┐
+                                            ▼         ▼                ▼         ▼
+                                           CLI       PR              SARIF      JSON
 ```
 
-The detection layer is **purely deterministic in everything except the model call**: extraction is `git diff`; validation is schema-checked; formatting is straightforward template substitution. The LLM call uses `temperature=0` and prompt caching, so identical diffs against an unchanged catalog converge on identical findings within the provider's cache window (5 min on Anthropic, prefix-cache on OpenAI).
+The detection pipeline is deterministic everywhere except the LLM call. Extraction is `git diff`. Validation is JSON-schema checked. Formatting is template substitution. The LLM call uses `temperature=0` and prompt caching, so identical diffs against an unchanged grounding catalog converge on identical findings within the provider's cache window — about 5 minutes on Anthropic, prefix-cache on OpenAI.
 
-Provider adapters live in `scripts/providers/`. Each implements one function — `analyze({groundingBlocks, userMessage, model, apiKey})` — and the dispatcher (`scripts/llm_analyze.mjs`) picks one based on `--provider` or which env key is set. Adding a third provider (e.g. Gemini) is ~120 lines and does not touch any other part of the pipeline.
-
-**Per-run telemetry**. Every JSON report carries `cost`, `latency_ms`, and a `usage` block (input/output/cached tokens). Use these for your own pricing analysis — published cost figures will be added once we have measured benchmarks (see `benchmark/`).
+Provider adapters live in `scripts/providers/`. Each implements one function — `analyze({groundingBlocks, userMessage, model, apiKey})` — and the dispatcher (`scripts/llm_analyze.mjs`) picks one based on `--provider` or which env key is set. Adding a third provider (Gemini, Mistral, a self-hosted model behind an OpenAI-compatible API) is roughly 120 lines and does not touch any other part of the pipeline.
 
 ## Provider auto-detection
 
-When `--provider` is not specified, the tool picks from environment:
+When `--provider` is not specified, the tool picks from the environment:
 
-| ANTHROPIC_API_KEY | OPENAI_API_KEY | Chosen provider |
+| `ANTHROPIC_API_KEY` | `OPENAI_API_KEY` | Chosen provider |
 |---|---|---|
-| set | unset | **Anthropic** |
-| unset | set | **OpenAI** |
-| set | set | **Anthropic** (emits stderr notice) |
-| unset | unset | error: at least one key required |
+| set | unset | Anthropic |
+| unset | set | OpenAI |
+| set | set | **Anthropic** (stderr notice; override with `--provider=openai` or `SECURITY_AUDIT_PROVIDER=openai`) |
+| unset | unset | error — at least one key is required |
 
-**Why Anthropic on tie**: explicit `cache_control` markers give roughly 90% cache-read discount on the ~12K stable grounding tokens, versus ~50% on OpenAI's automatic prefix cache. Once the cache is warm, that's a 2× cost difference for the same call. This is a heuristic about cost, not quality — both providers produce valid findings.
-
-**Override**: pass `--provider=openai`, or set `SECURITY_AUDIT_PROVIDER=openai`. The stderr notice is suppressed in non-interactive environments unless `SECURITY_AUDIT_DEBUG=1`.
+The Anthropic-on-tie default is a cost heuristic, not a quality claim: explicit `cache_control` markers give roughly 90% cache-read discount on the stable grounding prefix, vs. ~50% on OpenAI's automatic prefix cache. Once warm, that is a 2× cost difference per call. Both providers produce valid findings.
 
 ## Configuration
 
@@ -200,16 +193,24 @@ Suppress a single finding inline:
 const data = await fetch(internalUrl);
 ```
 
-Suppress repo-wide via `.security-audit-ignore` (planned, gitignore-style globs + rule IDs).
+Comment syntaxes recognised: `//`, `/* */`, `{/* */}` (JSX), `#` (Dockerfile / YAML), `<!-- -->` (HTML). The directive can be on the same line or up to 3 lines above the flagged code.
 
-Override defaults via env:
+Suppress repo-wide via `.security-audit-ignore` — gitignore-style globs plus rule IDs:
+
+```
+# Legacy bundle we cannot fix yet
+vendor/legacy/**     R-01,R-15
+
+# Test fixtures intentionally contain XSS payloads
+**/__fixtures__/**   *
+```
+
+Environment overrides:
 
 ```bash
-# Pick at least one provider key:
 ANTHROPIC_API_KEY=sk-...
 OPENAI_API_KEY=sk-...
 
-# Optional configuration:
 SECURITY_AUDIT_PROVIDER=anthropic   # auto (default) | anthropic | openai
 SECURITY_AUDIT_MODEL=sonnet         # provider-specific alias or exact id
 SECURITY_AUDIT_FAIL_ON=critical     # critical | high | medium | low | info | none
@@ -218,12 +219,20 @@ SECURITY_AUDIT_DEBUG=1              # verbose stderr
 
 ## Limitations
 
-- **Diff-only context.** The model sees changed lines plus 10 lines of context per hunk by default. Vulnerabilities that depend on global state (e.g. a sanitizer defined in another file) may be misclassified. Increase `--context` or use `--include-file-context` (planned).
-- **One language ecosystem.** TS/JS/TSX/JSX + Dockerfile + docker-compose. Python/Go/Java/Rust are out of scope.
-- **LLM variance.** `temperature=0` makes runs near-deterministic but not bit-identical across model versions. Pin a model ID in CI for reproducibility.
-- **Cost scales with diff size.** A 5000-line diff is expensive. The tool truncates to `--max-files=50` by default and warns on stderr.
-- **3rd-party LLM API dependency.** No Anthropic *or* OpenAI key, no scan. Self-hosted alternatives (Ollama, vLLM, LiteLLM) are not yet supported.
-- **A09 not covered.** OWASP A09 (Logging & Monitoring Failures) is operational, not code-level — most subcategories cannot be detected by reading code alone.
+- **Diff-only context.** The model sees changed lines plus ~10 lines of context per hunk. Vulnerabilities that depend on global state (a sanitizer defined in another file, a middleware mounted elsewhere) may be misclassified.
+- **One language ecosystem.** TS / JS / TSX / JSX + Dockerfile + docker-compose. Python / Go / Java / Rust are out of scope.
+- **LLM variance.** `temperature=0` makes runs near-deterministic but not bit-identical across model versions. Pin a model id in CI for reproducibility.
+- **Cost scales with diff size.** A 5000-line diff is expensive; the tool truncates to `--max-files=50` by default and warns on stderr.
+- **3rd-party LLM API dependency.** No Anthropic or OpenAI key, no scan. Self-hosted alternatives (Ollama, vLLM, LiteLLM) are not yet supported.
+- **A09 not covered.** OWASP A09 (Security Logging & Monitoring Failures) is operational, not code-level — most subcategories cannot be detected by reading source.
+
+## Roadmap
+
+- **Benchmark corpus** — 15–20 synthetic PRs against both providers (Anthropic + OpenAI), measuring F1 with seed variation, latency p50/p95, and cost. Comparison with Semgrep / Snyk Code on the same diffs.
+- **Plugin manifest** — package as a Claude Code plugin (`.claude-plugin/plugin.json`) for `/plugins install dmytrosorokame/security-audit`.
+- **`pull_request_target` mode** — secure handling of fork PRs (current `pull_request` event excludes forks for safety).
+- **Self-hosted LLM adapter** — OpenAI-compatible API (vLLM, Ollama) for organisations that cannot use hosted models.
+- **More language ecosystems** — Python and Go.
 
 ## License
 

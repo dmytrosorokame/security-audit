@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.claude.com/schemas/claude-code-plugin.json",
+  "name": "security-audit",
+  "version": "0.1.0",
+  "description": "Diff-mode LLM security review. Maps each finding to OWASP Top 10 (2021) and CWE; covers DOM XSS, SQL/NoSQL/command injection, SSRF, IDOR, XXE, SSTI, mass assignment, prototype pollution, insecure storage, open redirects, missing CSP/CSRF/Helmet, weak crypto, hardcoded secrets, and Docker/compose misconfigurations.",
+  "author": {
+    "name": "Dmytro Soroka",
+    "url": "https://github.com/dmytrosorokame"
+  },
+  "homepage": "https://github.com/dmytrosorokame/security-audit",
+  "repository": "https://github.com/dmytrosorokame/security-audit",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "audit",
+    "owasp",
+    "cwe",
+    "sast",
+    "diff",
+    "pull-request",
+    "code-review"
+  ],
+  "components": {
+    "skills": [
+      {
+        "path": "SKILL.md"
+      }
+    ]
+  },
+  "engines": {
+    "claude-code": ">=1.0.0",
+    "node": ">=20"
+  },
+  "permissions": {
+    "bash": [
+      "git diff *",
+      "git rev-parse *",
+      "git show *",
+      "node scripts/*",
+      "node benchmark/*"
+    ],
+    "env": [
+      "ANTHROPIC_API_KEY",
+      "OPENAI_API_KEY",
+      "SECURITY_AUDIT_PROVIDER",
+      "SECURITY_AUDIT_MODEL",
+      "SECURITY_AUDIT_FAIL_ON",
+      "SECURITY_AUDIT_DEBUG",
+      "SECURITY_AUDIT_CACHE_DIR"
+    ]
+  }
+}

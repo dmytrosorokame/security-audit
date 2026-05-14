@@ -37,5 +37,8 @@ benchmark/runs/
 benchmark/cache/
 benchmark/_raw/
 
+# LLM response cache (file-based, written by scan_diff --cache-dir)
+.security-audit-cache/
+
 # Local config
 .security-audit-ignore

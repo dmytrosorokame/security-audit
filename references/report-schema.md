@@ -1,6 +1,6 @@
 # Report Schema
 
-Скіл повертає звіт у двох форматах: human-readable Markdown і machine-readable JSON.
+The skill emits its report in two formats: human-readable Markdown and machine-readable JSON.
 
 ## JSON schema (machine-readable)
 
@@ -92,7 +92,7 @@
 <div dangerouslySetInnerHTML={{__html: post.body}} />
 ```
 
-**Context**: `post.body` походить з GraphQL `getPost` query і не санітизується.
+**Context**: `post.body` comes from the GraphQL `getPost` query and is not sanitised.
 
 **Remediation**:
 ```tsx
@@ -109,7 +109,7 @@ import DOMPurify from 'isomorphic-dompurify';
 
 | Verdict | Meaning |
 |---------|---------|
-| `TRUE_POSITIVE` | Реальна вразливість, потребує фіксу. |
-| `LIKELY_TP` | Дуже ймовірна вразливість, потрібен короткий ручний review. |
-| `NEEDS_HUMAN` | Контекст недостатній для автоматичного вердикту. |
-| `FALSE_POSITIVE` | Патерн є, але контекст безпечний (тестовий код, статичні значення). |
+| `TRUE_POSITIVE` | Real vulnerability, needs a fix. |
+| `LIKELY_TP` | Highly likely vulnerability; brief manual review recommended. |
+| `NEEDS_HUMAN` | Context in the diff is insufficient for an automatic verdict. |
+| `FALSE_POSITIVE` | Pattern matches but the context is safe (test code, static values). |
