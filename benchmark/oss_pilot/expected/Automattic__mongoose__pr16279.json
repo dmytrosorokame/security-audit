@@ -1,0 +1,25 @@
+{
+  "name": "[oss] Automattic/mongoose PR #16279: docs: scroll active sidebar link into view",
+  "diff": "../diffs/Automattic__mongoose__pr16279.diff",
+  "source": {
+    "repo": "Automattic/mongoose",
+    "pr": 16279,
+    "html_url": "https://github.com/Automattic/mongoose/pull/16279",
+    "merged_at": "2026-05-13T18:08:22Z",
+    "title": "docs: scroll active sidebar link into view",
+    "stats": {
+      "files": 1,
+      "addedLines": 20,
+      "removedLines": 0
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Docs-site JS that scrolls the active sidebar link into view via getBoundingClientRect; reads DOM geometry only, no user-controlled sink.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/Automattic/mongoose/pull/16279",
+    "note": "Reviewed-TN (single annotator): Docs-site JS that scrolls the active sidebar link into view via getBoundingClientRect; reads DOM geometry only, no user-controlled sink."
+  }
+}

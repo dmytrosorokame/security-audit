@@ -1,0 +1,25 @@
+{
+  "name": "[oss] validatorjs/validator.js PR #2701: add en-CM alias for Cameroon mobile phone validation",
+  "diff": "../diffs/validatorjs__validator.js__pr2701.diff",
+  "source": {
+    "repo": "validatorjs/validator.js",
+    "pr": 2701,
+    "html_url": "https://github.com/validatorjs/validator.js/pull/2701",
+    "merged_at": "2026-04-24T18:39:04Z",
+    "title": "feat(isMobilePhone): add (en-CM) alias for Cameroon (fr-CM) mobile phone validation",
+    "stats": {
+      "files": 3,
+      "addedLines": 17,
+      "removedLines": 1
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Adds an en-CM phone-locale alias pointing at the existing fr-CM regex, plus README and tests; new validation entry reusing a vetted pattern, no weakening.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/validatorjs/validator.js/pull/2701",
+    "note": "Reviewed-TN (single annotator): Adds an en-CM phone-locale alias pointing at the existing fr-CM regex, plus README and tests; new validation entry reusing a vetted pattern, no weakening."
+  }
+}

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+<rect x="0" y="0" width="900" height="520" fill="#ffffff"/>
+<text x="450" y="32.76" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="18" fill="#222222" text-anchor="middle" font-weight="bold">Generalisation: F1 along the synthetic → external chain</text>
+<line x1="70" y1="440" x2="860" y2="440" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="443.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.00</text>
+<line x1="70" y1="366" x2="860" y2="366" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="369.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.20</text>
+<line x1="70" y1="292" x2="860" y2="292" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="295.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.40</text>
+<line x1="70" y1="218" x2="860" y2="218" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="221.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.60</text>
+<line x1="70" y1="144" x2="860" y2="144" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="147.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.80</text>
+<line x1="70" y1="70" x2="860" y2="70" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="73.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">1.00</text>
+<line x1="70" y1="70" x2="70" y2="440" stroke="#444444" stroke-width="1.5"/>
+<line x1="70" y1="440" x2="860" y2="440" stroke="#444444" stroke-width="1.5"/>
+<line x1="70" y1="94.79" x2="228" y2="89.61" stroke="#ff7f0e" stroke-width="2.5"/>
+<line x1="228" y1="89.61" x2="386" y2="103.67" stroke="#ff7f0e" stroke-width="2.5"/>
+<line x1="386" y1="103.67" x2="544" y2="133.64" stroke="#ff7f0e" stroke-width="2.5"/>
+<line x1="544" y1="133.64" x2="702" y2="103.67" stroke="#ff7f0e" stroke-width="2.5"/>
+<line x1="702" y1="103.67" x2="860" y2="175.82" stroke="#ff7f0e" stroke-width="2.5"/>
+<rect x="66" y="90.79" width="8" height="8" fill="#ff7f0e"/>
+<rect x="224" y="85.61" width="8" height="8" fill="#ff7f0e"/>
+<rect x="382" y="99.67" width="8" height="8" fill="#ff7f0e"/>
+<rect x="540" y="129.64" width="8" height="8" fill="#ff7f0e"/>
+<rect x="698" y="99.67" width="8" height="8" fill="#ff7f0e"/>
+<rect x="856" y="171.82" width="8" height="8" fill="#ff7f0e"/>
+<line x1="70" y1="94.79" x2="228" y2="89.61" stroke="#1f77b4" stroke-width="1.6" stroke-dasharray="7,5"/>
+<line x1="228" y1="89.61" x2="386" y2="103.67" stroke="#1f77b4" stroke-width="1.6" stroke-dasharray="7,5"/>
+<line x1="386" y1="103.67" x2="544" y2="133.64" stroke="#1f77b4" stroke-width="1.6" stroke-dasharray="7,5"/>
+<line x1="544" y1="133.64" x2="702" y2="103.67" stroke="#1f77b4" stroke-width="1.6" stroke-dasharray="7,5"/>
+<line x1="702" y1="103.67" x2="860" y2="175.82" stroke="#1f77b4" stroke-width="1.6" stroke-dasharray="7,5"/>
+<rect x="66" y="90.79" width="8" height="8" fill="#1f77b4"/>
+<rect x="224" y="85.61" width="8" height="8" fill="#1f77b4"/>
+<rect x="382" y="99.67" width="8" height="8" fill="#1f77b4"/>
+<rect x="540" y="129.64" width="8" height="8" fill="#1f77b4"/>
+<rect x="698" y="99.67" width="8" height="8" fill="#1f77b4"/>
+<rect x="856" y="171.82" width="8" height="8" fill="#1f77b4"/>
+<text x="70" y="81.81" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.93</text>
+<text x="228" y="76.63" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.95</text>
+<text x="386" y="90.69" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.91</text>
+<text x="544" y="120.66" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.83</text>
+<text x="702" y="90.69" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.91</text>
+<text x="860" y="162.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.71</text>
+<text x="70" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">smoke</text>
+<text x="228" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">independent</text>
+<text x="386" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">complex</text>
+<text x="544" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">nodegoat</text>
+<text x="702" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">juiceshop</text>
+<text x="860" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">oss_pilot</text>
+<rect x="70" y="492" width="12" height="12" fill="#1f77b4"/>
+<text x="87" y="502.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">strict F1 (dashed)</text>
+<rect x="236.6" y="492" width="12" height="12" fill="#ff7f0e"/>
+<text x="253.6" y="502.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">loose F1</text>
+</svg>

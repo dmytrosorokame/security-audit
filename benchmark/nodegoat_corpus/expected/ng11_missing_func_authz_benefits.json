@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A7 — admin benefits route reachable without a server-side role check",
+  "diff": "../diffs/ng11_missing_func_authz_benefits.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-19", "owasp_id": "A01", "cwe_id": "CWE-862", "severity": "high", "accept_alternatives": ["B-11"] } ],
+  "provenance": { "kind": "real", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/routes/index.js", "note": "Both sides verbatim-real: NodeGoat master registers the benefits routes with only isLoggedIn (no isAdmin) live, and ships the documented role-guarded form (isLoggedIn, isAdmin) as an adjacent commented 'Fix for A7' block. Diff inverts the documented fix." },
+  "notes": "Coverage gap closed by new rule B-19 (missing function-level authz, CWE-862), distinct from IDOR. NodeGoat A7 Missing Function Level Access Control."
+}

@@ -1,0 +1,13 @@
+diff --git a/app/routes/memos.js b/app/routes/memos.js
+index 1111111..2222222 100644
+--- a/app/routes/memos.js
++++ b/app/routes/memos.js
+@@ -7,7 +7,7 @@ function MemosHandler(db) {
+     this.addMemos = (req, res, next) => {
+
+-        const memo = { memo: req.body.memo.memo, timestamp: req.body.memo.timestamp };
+-        memosDAO.insert(memo, (err, docs) => {
++        memosDAO.insert(req.body.memo, (err, docs) => {
+             if (err) return next(err);
+             this.displayMemos(req, res, next);
+         });

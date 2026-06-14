@@ -1,0 +1,25 @@
+{
+  "name": "[oss] axios/axios PR #10889: docs: rewrite collaborator guide",
+  "diff": "../diffs/axios__axios__pr10889.diff",
+  "source": {
+    "repo": "axios/axios",
+    "pr": 10889,
+    "html_url": "https://github.com/axios/axios/pull/10889",
+    "merged_at": "2026-05-13T17:23:51Z",
+    "title": "chore: clarify review cycle and update collaboration guide",
+    "stats": {
+      "files": 1,
+      "addedLines": 47,
+      "removedLines": 14
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Markdown-only rewrite of COLLABORATOR_GUIDE.md; no code touched.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/axios/axios/pull/10889",
+    "note": "Reviewed-TN (single annotator): Markdown-only rewrite of COLLABORATOR_GUIDE.md; no code touched."
+  }
+}

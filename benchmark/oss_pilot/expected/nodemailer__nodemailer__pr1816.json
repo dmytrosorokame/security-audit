@@ -1,0 +1,25 @@
+{
+  "name": "[oss] nodemailer/nodemailer PR #1816: drop nodemailer-ntlm-auth devDependency (underscore advisory)",
+  "diff": "../diffs/nodemailer__nodemailer__pr1816.diff",
+  "source": {
+    "repo": "nodemailer/nodemailer",
+    "pr": 1816,
+    "html_url": "https://github.com/nodemailer/nodemailer/pull/1816",
+    "merged_at": "2026-04-27T09:41:18Z",
+    "title": "chore: drop nodemailer-ntlm-auth devDependency",
+    "stats": {
+      "files": 3,
+      "addedLines": 7,
+      "removedLines": 80
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Removes the unmaintained nodemailer-ntlm-auth devDependency carrying a transitive underscore advisory (GHSA-qpx9-hpmf-5gmw) and documents the optional install; a dependency-hygiene improvement, not a regression.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/nodemailer/nodemailer/pull/1816",
+    "note": "Reviewed-TN (single annotator): Removes the unmaintained nodemailer-ntlm-auth devDependency carrying a transitive underscore advisory (GHSA-qpx9-hpmf-5gmw) and documents the optional install; a dependency-hygiene improvement, not a regression."
+  }
+}

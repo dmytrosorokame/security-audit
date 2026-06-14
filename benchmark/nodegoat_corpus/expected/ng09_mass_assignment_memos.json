@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat — mass assignment: whole req.body.memo inserted without an allowlist",
+  "diff": "../diffs/ng09_mass_assignment_memos.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-13", "owasp_id": "A08", "cwe_id": "CWE-915", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/routes/memos.js", "note": "Vulnerable side is verbatim-real NodeGoat master code (addMemos inserts the whole req.body.memo). NodeGoat ships no committed allowlist fix, so the safe baseline (-) side is a reconstructed field-allowlist insert; hence kind=synthesized." },
+  "notes": "Attacker can set unintended fields on the memo document. NodeGoat mass-assignment pattern."
+}

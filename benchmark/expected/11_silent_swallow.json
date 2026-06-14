@@ -1,0 +1,13 @@
+{
+  "name": "Empty catch swallows Stripe refund failure",
+  "diff": "../../examples/11_silent_swallow.diff",
+  "expected": [
+    {
+      "rule_id": "B-17",
+      "owasp_id": "A10",
+      "cwe_id": "CWE-755",
+      "severity": "medium"
+    }
+  ],
+  "expect_zero_findings": false
+}

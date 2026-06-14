@@ -1,0 +1,17 @@
+{
+  "name": "SQL injection introduced by tenant filter — string-concatenated into otherwise parameterised query",
+  "diff": "../diffs/c05_cross_file_sql_injection.diff",
+  "expected": [
+    {
+      "rule_id": "B-01",
+      "owasp_id": "A05",
+      "cwe_id": "CWE-89",
+      "severity": "critical"
+    }
+  ],
+  "expect_zero_findings": false,
+  "complexity": "taint-chain",
+  "files_changed": 2,
+  "challenge": "The `from`/`to` values remain parameterised — that's a green flag a quick scan stops on. The new `tenant` parameter, sourced from `req.query.tenant`, is concatenated into raw SQL with a single quote wrapping (`'${filter.tenant}'`). This is classic SQL injection: `?tenant=foo' OR '1'='1` becomes `tenant_id = 'foo' OR '1'='1'`. The analyzer must follow the taint chain across two files: route → query helper. The route file alone shows nothing dangerous (it just passes data into a helper); the helper file alone shows a template-literal interpolation but the source is non-obvious without the route context.",
+  "notes": "Critical because tenant_id typically isolates multi-tenant data — breaking it via SQL injection is a cross-tenant data breach. The `replacements:` map looks like proper parameter binding and that visual familiarity is the trap. Excellent case for testing whether the LLM correctly identifies the *new* parameter that was added — not the unchanged `from`/`to` parameterisation."
+}

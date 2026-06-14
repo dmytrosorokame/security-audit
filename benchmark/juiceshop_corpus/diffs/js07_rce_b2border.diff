@@ -1,0 +1,18 @@
+diff --git a/routes/b2bOrder.ts b/routes/b2bOrder.ts
+index 3c4d5e6..4d5e6f7 100644
+--- a/routes/b2bOrder.ts
++++ b/routes/b2bOrder.ts
+@@ -10,9 +10,10 @@ export function b2bOrder () {
+   return ({ body }: Request, res: Response, next: NextFunction) => {
+     if (!utils.disableOnContainerEnv()) {
+       const orderLinesData = body.orderLinesData || ''
+-      const parsed = JSON.parse(String(orderLinesData))
+-      if (!Array.isArray(parsed)) throw new Error('orderLinesData must be an array')
+-      res.json({ cid: body.cid, orderNo: insecurity.hash(`${body.cid}_${Date.now()}`), paymentDue: dateTwoWeeksFromNow(), orderLines: parsed })
++      const sandbox = { safeEval, orderLinesData }
++      vm.createContext(sandbox)
++      vm.runInContext('safeEval(orderLinesData)', sandbox, { timeout: 2000 })
++      res.json({ cid: body.cid, orderNo: insecurity.hash(`${body.cid}_${Date.now()}`), paymentDue: dateTwoWeeksFromNow() })
+     } else {
+       res.json({ cid: body.cid, orderNo: insecurity.hash(`${body.cid}_${Date.now()}`), paymentDue: dateTwoWeeksFromNow() })
+     }

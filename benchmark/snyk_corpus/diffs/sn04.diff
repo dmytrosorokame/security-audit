@@ -1,0 +1,15 @@
+diff --git a/src/messaging/receiver.ts b/src/messaging/receiver.ts
+index 5a6b7c8..6b7c8d9 100644
+--- a/src/messaging/receiver.ts
++++ b/src/messaging/receiver.ts
+@@ -1,10 +1,9 @@
+ import { handleMessage } from './handler';
+
+ export function listen(): void {
+   window.addEventListener('message', (event: MessageEvent) => {
+-    // Accept messages only from the trusted parent frame.
+-    if (event.origin !== 'https://trusted.example.com') return;
++    // No event.origin check: any embedding/opener window can drive handleMessage.
+     handleMessage(event.data);
+   });
+ }

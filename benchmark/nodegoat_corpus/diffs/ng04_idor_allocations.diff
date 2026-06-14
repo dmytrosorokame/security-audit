@@ -1,0 +1,13 @@
+diff --git a/app/routes/allocations.js b/app/routes/allocations.js
+index 1111111..2222222 100644
+--- a/app/routes/allocations.js
++++ b/app/routes/allocations.js
+@@ -7,7 +7,9 @@ function AllocationsHandler(db) {
+     this.displayAllocations = (req, res, next) => {
+-        const { userId } = req.session;
++        const {
++            userId
++        } = req.params;
+         const {
+             threshold
+         } = req.query;

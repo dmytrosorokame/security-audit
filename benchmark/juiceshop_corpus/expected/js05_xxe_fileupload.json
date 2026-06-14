@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — XXE via libxml parseXml with noent:true on uploaded XML",
+  "diff": "../diffs/js05_xxe_fileupload.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-12", "owasp_id": "A02", "cwe_id": "CWE-611", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/fileUpload.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: XXE Data Access." },
+  "notes": "Uploaded XML is parsed with libxml.parseXml(..., { noent: true }), which substitutes external entities — enabling XXE local-file disclosure (e.g. /etc/passwd) and SSRF. Fix sets noent:false to disable entity expansion."
+}

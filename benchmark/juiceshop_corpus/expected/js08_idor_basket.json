@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — IDOR: basket retrievable by id without ownership check",
+  "diff": "../diffs/js08_idor_basket.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-11", "owasp_id": "A01", "cwe_id": "CWE-639", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/basket.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: View Basket." },
+  "notes": "req.params.id is used directly in BasketModel.findOne({ where: { id } }) and the basket is returned via res.json with no ownership verification — any authenticated user can read another user's basket by guessing ids. Fix asserts the basket id matches the caller's own bid before querying."
+}

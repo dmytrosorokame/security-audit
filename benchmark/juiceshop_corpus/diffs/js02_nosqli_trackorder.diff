@@ -1,0 +1,13 @@
+diff --git a/routes/trackOrder.ts b/routes/trackOrder.ts
+index 3c4d5e6..4d5e6f7 100644
+--- a/routes/trackOrder.ts
++++ b/routes/trackOrder.ts
+@@ -10,9 +10,9 @@ export function trackOrder () {
+   return (req: Request, res: Response, next: NextFunction) => {
+-    const id = String(req.params.id).replace(/[^\w-]+/g, '')
+-    db.ordersCollection.find({ orderId: id }).then((order: any) => {
++    const id = utils.trunc(req.params.id, 60)
++    db.ordersCollection.find({ $where: `this.orderId === '${id}'` }).then((order: any) => {
+       const result = utils.queryResultToJson(order)
+       if (result.data[0]) {
+         res.json(result)

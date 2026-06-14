@@ -1,0 +1,148 @@
+diff --git a/lib/error-handler.js b/lib/error-handler.js
+index f9a1899ca99..28f27a801da 100644
+--- a/lib/error-handler.js
++++ b/lib/error-handler.js
+@@ -8,7 +8,8 @@ const {
+   kReplyNextErrorHandler,
+   kReplyIsRunningOnErrorHook,
+   kRouteContext,
+-  kDisableRequestLogging
++  kDisableRequestLogging,
++  kDiagnosticsStore
+ } = require('./symbols.js')
+ 
+ const {
+@@ -19,7 +20,6 @@ const {
+ const { getSchemaSerializer } = require('./schemas')
+ 
+ const serializeError = require('./error-serializer')
+-
+ const rootErrorHandler = {
+   func: defaultErrorHandler,
+   toJSON () {
+@@ -69,7 +69,8 @@ function handleError (reply, error, cb) {
+     const result = func(error, reply.request, reply)
+     if (result !== undefined) {
+       if (result !== null && typeof result.then === 'function') {
+-        wrapThenable(result, reply)
++        const store = reply[kDiagnosticsStore] || null
++        wrapThenable(result, reply, store)
+       } else {
+         reply.send(result)
+       }
+diff --git a/lib/handle-request.js b/lib/handle-request.js
+index a9412253159..c5760009eef 100644
+--- a/lib/handle-request.js
++++ b/lib/handle-request.js
+@@ -11,7 +11,8 @@ const {
+   kRouteContext,
+   kFourOhFourContext,
+   kSupportedHTTPMethods,
+-  kRequestContentType
++  kRequestContentType,
++  kDiagnosticsStore
+ } = require('./symbols')
+ 
+ const channels = diagnostics.tracingChannel('fastify.request.handler')
+@@ -146,6 +147,7 @@ function preHandlerCallback (err, request, reply) {
+         method: context.config.method
+       }
+     }
++    reply[kDiagnosticsStore] = store
+     channels.start.runStores(store, preHandlerCallbackInner, undefined, err, request, reply, store)
+   }
+ }
+diff --git a/lib/symbols.js b/lib/symbols.js
+index 2ae2b5d7f05..7d2d13bdf5f 100644
+--- a/lib/symbols.js
++++ b/lib/symbols.js
+@@ -66,7 +66,8 @@ const keys = {
+   kChildLoggerFactory: Symbol('fastify.childLoggerFactory'),
+   kHasBeenDecorated: Symbol('fastify.hasBeenDecorated'),
+   kKeepAliveConnections: Symbol('fastify.keepAliveConnections'),
+-  kRouteByFastify: Symbol('fastify.routeByFastify')
++  kRouteByFastify: Symbol('fastify.routeByFastify'),
++  kDiagnosticsStore: Symbol('fastify.diagnosticsStore')
+ }
+ 
+ module.exports = keys
+diff --git a/test/diagnostics-channel/async-error-handler.test.js b/test/diagnostics-channel/async-error-handler.test.js
+new file mode 100644
+index 00000000000..f542bb6d6cb
+--- /dev/null
++++ b/test/diagnostics-channel/async-error-handler.test.js
+@@ -0,0 +1,74 @@
++'use strict'
++
++const { test } = require('node:test')
++const diagnostics = require('node:diagnostics_channel')
++const Fastify = require('../..')
++const Request = require('../../lib/request')
++const Reply = require('../../lib/reply')
++
++test('diagnostics channel tracks async operations in async error handlers', async t => {
++  t.plan(17)
++  let callOrder = 0
++  let firstEncounteredMessage
++  let asyncStartFired = false
++  let asyncEndFired = false
++
++  const fastify = Fastify()
++
++  function subscribe (name, handler) {
++    const wrapped = (msg) => {
++      if (msg.request.server === fastify) handler(msg)
++    }
++    diagnostics.subscribe(name, wrapped)
++    t.after(() => diagnostics.unsubscribe(name, wrapped))
++  }
++
++  subscribe('tracing:fastify.request.handler:start', (msg) => {
++    t.assert.strictEqual(callOrder++, 0)
++    firstEncounteredMessage = msg
++    t.assert.ok(msg.request instanceof Request)
++    t.assert.ok(msg.reply instanceof Reply)
++  })
++
++  subscribe('tracing:fastify.request.handler:error', (msg) => {
++    t.assert.strictEqual(callOrder++, 1)
++    t.assert.ok(msg.error instanceof Error)
++    t.assert.strictEqual(msg.error.message, 'handler error')
++  })
++
++  subscribe('tracing:fastify.request.handler:end', (msg) => {
++    t.assert.strictEqual(callOrder++, 2)
++    t.assert.strictEqual(msg, firstEncounteredMessage)
++    t.assert.strictEqual(msg.async, true)
++  })
++
++  subscribe('tracing:fastify.request.handler:asyncStart', (msg) => {
++    t.assert.strictEqual(callOrder++, 3)
++    t.assert.strictEqual(msg, firstEncounteredMessage)
++    asyncStartFired = true
++  })
++
++  subscribe('tracing:fastify.request.handler:asyncEnd', (msg) => {
++    t.assert.strictEqual(callOrder++, 4)
++    t.assert.strictEqual(msg, firstEncounteredMessage)
++    asyncEndFired = true
++  })
++
++  fastify.setErrorHandler(async (error, request, reply) => {
++    await new Promise(resolve => setImmediate(resolve))
++    reply.status(503).send({ error: error.message })
++  })
++
++  fastify.get('/', () => {
++    throw new Error('handler error')
++  })
++
++  const fastifyServer = await fastify.listen({ port: 0 })
++  t.after(() => fastify.close())
++
++  const response = await fetch(fastifyServer)
++  t.assert.ok(!response.ok)
++  t.assert.strictEqual(response.status, 503)
++  t.assert.ok(asyncStartFired, 'asyncStart should fire for async error handler')
++  t.assert.ok(asyncEndFired, 'asyncEnd should fire for async error handler')
++})

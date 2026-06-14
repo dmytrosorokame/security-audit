@@ -1,0 +1,14 @@
+{
+  "name": "Snyk breadth — auth token persisted in localStorage",
+  "diff": "../diffs/sn02.diff",
+  "expect_zero_findings": false,
+  "expected": [
+    { "rule_id": "R-06", "owasp_id": "A04", "cwe_id": "CWE-922", "severity": "high" }
+  ],
+  "provenance": {
+    "kind": "synthesized",
+    "source": "https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html",
+    "note": "Constructed snippet illustrating insecure credential storage — an auth token written to localStorage where any XSS can read it. Breadth supplement (spec §4.3) — lower realism, not an external-validity claim."
+  },
+  "notes": "Vulnerable (+) side calls localStorage.setItem('authToken', token); safe (-) side keeps the token in a module-scoped in-memory variable backed by an httpOnly cookie. Key name contains 'token' / 'auth', a TP trigger per R-06."
+}

@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat SSRF — server fetches an attacker-supplied URL via needle.get",
+  "diff": "../diffs/ng03_ssrf_research.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-04", "owasp_id": "A01", "cwe_id": "CWE-918", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/routes/research.js", "note": "Vulnerable side is verbatim-real NodeGoat master code (displayResearch concatenates req.query.url straight into needle.get with no allowlist). NodeGoat ships no committed/commented fix for this route, so the safe baseline (-) side is a reconstructed minimal host-validation fix; hence kind=synthesized." },
+  "notes": "HTTP client is needle (not axios/fetch); B-04 covers SSRF across all HTTP clients. NodeGoat SSRF tutorial."
+}

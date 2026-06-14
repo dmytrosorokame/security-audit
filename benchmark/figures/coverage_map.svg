@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="520" viewBox="0 0 940 520">
+<rect x="0" y="0" width="940" height="520" fill="#ffffff"/>
+<text x="470" y="30.76" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="18" fill="#222222" text-anchor="middle" font-weight="bold">Catalog coverage map (rules exercised by the corpora)</text>
+<text x="30" y="72.66" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" fill="#222222" text-anchor="start" font-weight="bold">Frontend (R)</text>
+<rect x="160" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="188" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-01</text>
+<rect x="226" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="254" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-02</text>
+<rect x="292" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="320" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-03</text>
+<rect x="358" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="386" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-04</text>
+<rect x="424" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="452" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-05</text>
+<rect x="490" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="518" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-06</text>
+<rect x="556" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="584" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-07</text>
+<rect x="622" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="650" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-08</text>
+<rect x="688" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="716" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-09</text>
+<rect x="754" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="782" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-10</text>
+<rect x="820" y="56" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="848" y="72.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">R-11</text>
+<text x="30" y="128.66" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" fill="#222222" text-anchor="start" font-weight="bold">Backend (B)</text>
+<rect x="160" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="188" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-01</text>
+<rect x="226" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="254" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-02</text>
+<rect x="292" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="320" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-03</text>
+<rect x="358" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="386" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-04</text>
+<rect x="424" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="452" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-05</text>
+<rect x="490" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="518" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-06</text>
+<rect x="556" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="584" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-07</text>
+<rect x="622" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="650" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-08</text>
+<rect x="688" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="716" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-09</text>
+<rect x="754" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="782" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-10</text>
+<rect x="820" y="112" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="848" y="128.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-11</text>
+<rect x="160" y="154" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="188" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-12</text>
+<rect x="226" y="154" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="254" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-13</text>
+<rect x="292" y="154" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="320" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-14</text>
+<rect x="358" y="154" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="386" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-15</text>
+<rect x="424" y="154" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="452" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-16</text>
+<rect x="490" y="154" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="518" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">B-17</text>
+<rect x="556" y="154" width="56" height="30" fill="#2ca02c" stroke="#e6a700" stroke-width="3"/>
+<text x="584" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="bold">B-18</text>
+<rect x="622" y="154" width="56" height="30" fill="#2ca02c" stroke="#e6a700" stroke-width="3"/>
+<text x="650" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="bold">B-19</text>
+<rect x="688" y="154" width="56" height="30" fill="#2ca02c" stroke="#e6a700" stroke-width="3"/>
+<text x="716" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="bold">B-20</text>
+<rect x="754" y="154" width="56" height="30" fill="#2ca02c" stroke="#e6a700" stroke-width="3"/>
+<text x="782" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="bold">B-21</text>
+<rect x="820" y="154" width="56" height="30" fill="#2ca02c" stroke="#e6a700" stroke-width="3"/>
+<text x="848" y="170.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="bold">B-22</text>
+<text x="30" y="226.66" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" fill="#222222" text-anchor="start" font-weight="bold">Container (D)</text>
+<rect x="160" y="210" width="56" height="30" fill="#2ca02c" stroke="#888888" stroke-width="1"/>
+<text x="188" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">D-01</text>
+<rect x="226" y="210" width="56" height="30" fill="#e3e3e3" stroke="#888888" stroke-width="1"/>
+<text x="254" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="middle">D-02</text>
+<rect x="292" y="210" width="56" height="30" fill="#e3e3e3" stroke="#888888" stroke-width="1"/>
+<text x="320" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="middle">D-03</text>
+<rect x="358" y="210" width="56" height="30" fill="#e3e3e3" stroke="#888888" stroke-width="1"/>
+<text x="386" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="middle">D-04</text>
+<rect x="424" y="210" width="56" height="30" fill="#e3e3e3" stroke="#888888" stroke-width="1"/>
+<text x="452" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="middle">D-05</text>
+<rect x="490" y="210" width="56" height="30" fill="#e3e3e3" stroke="#888888" stroke-width="1"/>
+<text x="518" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="middle">D-06</text>
+<rect x="556" y="210" width="56" height="30" fill="#e3e3e3" stroke="#888888" stroke-width="1"/>
+<text x="584" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="middle">D-07</text>
+<rect x="622" y="210" width="56" height="30" fill="#e3e3e3" stroke="#888888" stroke-width="1"/>
+<text x="650" y="226.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="middle">D-08</text>
+<rect x="30" y="486" width="12" height="12" fill="#2ca02c"/>
+<text x="47" y="496.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">exercised + detected</text>
+<rect x="211" y="486" width="12" height="12" fill="#d62728"/>
+<text x="228" y="496.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">exercised, missed</text>
+<rect x="370.4" y="486" width="12" height="12" fill="#e3e3e3"/>
+<text x="387.4" y="496.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">not exercised</text>
+<rect x="710" y="486" width="16" height="16" fill="#ffffff" stroke="#e6a700" stroke-width="3"/>
+<text x="731" y="496.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">added via benchmarking</text>
+</svg>

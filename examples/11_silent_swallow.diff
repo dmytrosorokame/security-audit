@@ -1,0 +1,17 @@
+diff --git a/api/src/services/payment.ts b/api/src/services/payment.ts
+index 1111..2222 100644
+--- a/api/src/services/payment.ts
++++ b/api/src/services/payment.ts
+@@ -1,15 +1,11 @@
+ import { stripe } from '../clients/stripe';
+ import { logger } from '../logger';
+
+ export async function refund(orderId: string) {
+   try {
+     await stripe.refunds.create({ payment_intent: orderId });
+-  } catch (e) {
+-    logger.error({ err: e, orderId, where: 'refund' });
+-    throw e;
+-  }
++  } catch {}
+ }

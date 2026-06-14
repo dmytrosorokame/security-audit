@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — SQL injection in login via raw email interpolation",
+  "diff": "../diffs/js01_sqli_login.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-01", "owasp_id": "A05", "cwe_id": "CWE-89", "severity": "critical" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/login.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: Login Admin." },
+  "notes": "req.body.email is concatenated straight into a raw Sequelize SELECT via template literal. Payload \"' OR 1=1--\" as the email bypasses authentication and logs in as the first user (admin). Fix uses :email / :password replacements."
+}

@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A8 — CSRF protection middleware removed from Express app",
+  "diff": "../diffs/ng05_missing_csrf.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-08", "owasp_id": "A01", "cwe_id": "CWE-352", "severity": "medium" } ],
+  "provenance": { "kind": "real", "source": "https://github.com/OWASP/NodeGoat/blob/master/server.js", "note": "Inverted the documented 'Fix for A8 - CSRF': removed the csurf require and app.use(csrf()) so state-changing POSTs have no anti-CSRF token." },
+  "notes": "State-changing routes (profile, allocations, memos) accept cross-site forged requests. NodeGoat A8 CSRF."
+}

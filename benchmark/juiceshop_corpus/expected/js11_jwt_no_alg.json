@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — JWT verified without an algorithm allowlist",
+  "diff": "../diffs/js11_jwt_no_alg.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-22", "owasp_id": "A04", "cwe_id": "CWE-347", "severity": "high", "accept_alternatives": ["B-07"] } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/lib/insecurity.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: Forged Signed JWT." },
+  "notes": "verify(token) calls jws.verify(token, publicKey) with no algorithm pinned, so a token forged with alg:none or HS256 (using the public key as the HMAC secret) can pass verification. Fix pins algorithms: ['RS256'] via jwt.verify. Coverage gap closed by new rule B-22."
+}

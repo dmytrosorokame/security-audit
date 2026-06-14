@@ -1,0 +1,14 @@
+{
+  "name": "Snyk breadth — client-side open redirect via window.location",
+  "diff": "../diffs/sn03.diff",
+  "expect_zero_findings": false,
+  "expected": [
+    { "rule_id": "R-08", "owasp_id": "A01", "cwe_id": "CWE-601", "severity": "high" }
+  ],
+  "provenance": {
+    "kind": "synthesized",
+    "source": "https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html",
+    "note": "Constructed snippet illustrating a client-side open redirect — a ?next= query param assigned to window.location.href without validation. Breadth supplement (spec §4.3) — lower realism, not an external-validity claim."
+  },
+  "notes": "Vulnerable (+) side assigns the raw URLSearchParams 'next' value to window.location.href; safe (-) side restricts it to same-origin relative paths. Target sourced from location.search is tainted per R-08."
+}

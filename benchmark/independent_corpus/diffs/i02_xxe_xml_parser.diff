@@ -1,0 +1,21 @@
+diff --git a/services/import/parser.ts b/services/import/parser.ts
+index cccc..dddd 100644
+--- a/services/import/parser.ts
++++ b/services/import/parser.ts
+@@ -1,15 +1,12 @@
+-import { parseXml } from 'libxmljs2';
++import { parseXml } from 'libxmljs2';
+
+ export async function importInvoice(req: Request, res: Response) {
+   const body = req.body as string;
+-  const doc = parseXml(body, {
+-    noent: false,
+-    nonet: true,
+-    dtdload: false,
+-  });
++  // Allow entity expansion so callers can use macros like &company-name;
++  const doc = parseXml(body, { noent: true });
+   const invoice = mapDocToInvoice(doc);
+   await saveInvoice(invoice);
+   res.json({ ok: true });
+ }

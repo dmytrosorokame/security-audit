@@ -1,0 +1,13 @@
+diff --git a/api/src/routes/profile.ts b/api/src/routes/profile.ts
+index ddd..eee 100644
+--- a/api/src/routes/profile.ts
++++ b/api/src/routes/profile.ts
+@@ -8,4 +8,8 @@ router.get('/profile/:id', async (req, res) => {
+   const profile = await Profile.findById(req.params.id);
+   res.json(profile);
+ });
++
++router.post('/profile/:id/avatar', async (req, res) => {
++  await Profile.update({ avatarUrl: req.body.url }, { where: { id: req.params.id } });
++  res.json({ ok: true });
++});

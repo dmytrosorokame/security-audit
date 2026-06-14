@@ -1,0 +1,16 @@
+{
+  "name": "Path traversal via removed basename + boundary check (CVE-2022-25881 family)",
+  "diff": "../diffs/i04_path_traversal_template_loader.diff",
+  "expected": [
+    {
+      "rule_id": "B-05",
+      "owasp_id": "A01",
+      "cwe_id": "CWE-22",
+      "severity": "high"
+    }
+  ],
+  "expect_zero_findings": false,
+  "cve_reference": "CVE-2022-25881 (http-cache-semantics) / CVE-2023-44487 family pattern",
+  "pattern_description": "Removal of both `path.basename()` and the `startsWith(TEMPLATES_DIR)` boundary check, on the (false) assumption that callers always pass trusted input. The 'trusted UI dropdown' comment is a classic anti-pattern — server-side validation must not depend on client-side enforcement.",
+  "notes": "Classic 'trust the client' regression. Even if today's UI restricts choices, tomorrow's caller might pass `../../../etc/passwd`. The diff also drops the in-directory boundary check, the second line of defence."
+}

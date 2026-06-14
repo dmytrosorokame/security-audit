@@ -1,0 +1,12 @@
+diff --git a/routes/fileUpload.ts b/routes/fileUpload.ts
+index 9c0d1e2..0d1e2f3 100644
+--- a/routes/fileUpload.ts
++++ b/routes/fileUpload.ts
+@@ -38,6 +38,6 @@ function handleXmlUpload (req: Request, res: Response, next: NextFunction) {
+       const data = file.buffer.toString()
+       try {
+         const sandbox = { libxml, data }
+         vm.createContext(sandbox)
+-        const xmlDoc = vm.runInContext('libxml.parseXml(data, { noblanks: true, noent: false, nocdata: true })', sandbox, { timeout: 2000 })
++        const xmlDoc = vm.runInContext('libxml.parseXml(data, { noblanks: true, noent: true, nocdata: true })', sandbox, { timeout: 2000 })
+         const xmlString = xmlDoc.toString(false)

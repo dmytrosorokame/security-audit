@@ -1,0 +1,11 @@
+diff --git a/lib/insecurity.ts b/lib/insecurity.ts
+index 7a8b9c0..8b9c0d1 100644
+--- a/lib/insecurity.ts
++++ b/lib/insecurity.ts
+@@ -30,7 +30,7 @@ export const hmac = (data: string) => crypto.createHmac('sha256', 'pa4qacea4VK9t
+
+-export const verify = (token: string) => { try { return !!jwt.verify(token, publicKey, { algorithms: ['RS256'] }) } catch { return false } }
++export const verify = (token: string) => token ? (jws.verify as ((token: string, secret: string) => boolean))(token, publicKey) : false
+
+ export const decode = (token: string) => { return jws.decode(token)?.payload }
+

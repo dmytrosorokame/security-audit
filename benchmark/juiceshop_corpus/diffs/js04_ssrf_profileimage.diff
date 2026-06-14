@@ -1,0 +1,18 @@
+diff --git a/routes/profileImageUrlUpload.ts b/routes/profileImageUrlUpload.ts
+index 7a8b9c0..8b9c0d1 100644
+--- a/routes/profileImageUrlUpload.ts
++++ b/routes/profileImageUrlUpload.ts
+@@ -17,10 +17,9 @@ export function profileImageUrlUpload () {
+   return async (req: Request, res: Response, next: NextFunction) => {
+     if (req.body.imageUrl !== undefined) {
+       const url = req.body.imageUrl
+       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
+       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
+       if (loggedInUser) {
+         try {
+-          if (!/^https:\/\/(?:[\w-]+\.)*example\.com\//.test(url)) { throw new Error('imageUrl host is not in the allowlist') }
+-          const response = await fetch(url)
++          const response = await fetch(url)
+           if (!response.ok || !response.body) {
+             throw new Error('url returned a non-OK status code or an empty body')
+           }

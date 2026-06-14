@@ -1,0 +1,13 @@
+diff --git a/app/routes/research.js b/app/routes/research.js
+index 1111111..2222222 100644
+--- a/app/routes/research.js
++++ b/app/routes/research.js
+@@ -8,7 +8,8 @@ function ResearchHandler() {
+     this.displayResearch = (req, res) => {
+
+         if (req.query.symbol) {
+-            const url = validateRequestedHost(req.query.url) + req.query.symbol;
++            const url = req.query.url + req.query.symbol;
+             return needle.get(url, (error, newResponse, body) => {
+                 if (!error && newResponse.statusCode === 200) {
+                     res.writeHead(200, {

@@ -1,0 +1,12 @@
+diff --git a/routes/login.ts b/routes/login.ts
+index 1a2b3c4..2b3c4d5 100644
+--- a/routes/login.ts
++++ b/routes/login.ts
+@@ -16,7 +16,7 @@ module.exports = function login () {
+   return (req: Request, res: Response, next: NextFunction) => {
+     verifyPreLoginChallenges(req)
+-    models.sequelize.query('SELECT * FROM Users WHERE email = :email AND password = :password AND deletedAt IS NULL', { replacements: { email: req.body.email || '', password: security.hash(req.body.password || '') }, model: UserModel, plain: true })
++    models.sequelize.query('SELECT * FROM Users WHERE email = :email AND password = :password AND deletedAt IS NULL', { replacements: { email: (req.body.email || '').trim(), password: security.hash(req.body.password || '') }, model: UserModel, plain: true })
+       .then((authenticatedUser) => {
+         const user = utils.queryResultToJson(authenticatedUser)
+         if (user.data?.id && user.data.totpSecret !== '') {

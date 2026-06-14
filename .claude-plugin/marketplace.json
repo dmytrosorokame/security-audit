@@ -1,0 +1,34 @@
+{
+  "$schema": "https://docs.claude.com/schemas/claude-code-marketplace.json",
+  "name": "security-audit-marketplace",
+  "owner": {
+    "name": "Dmytro Soroka",
+    "url": "https://github.com/dmytrosorokame"
+  },
+  "description": "Single-plugin marketplace exposing the security-audit skill — diff-mode LLM security review mapped to OWASP Top 10 + CWE.",
+  "plugins": [
+    {
+      "name": "security-audit",
+      "source": {
+        "source": "github",
+        "repo": "dmytrosorokame/security-audit"
+      },
+      "skills": [
+        "./skills/security-audit"
+      ],
+      "description": "LLM-driven security review for git diffs. Maps each finding to OWASP Top 10 + CWE; covers DOM XSS, SQL/NoSQL/command injection, SSRF, IDOR, XXE, SSTI, mass assignment, prototype pollution, insecure storage, open redirects, missing CSP/CSRF/Helmet, weak crypto, hardcoded secrets, and Docker/compose misconfigurations.",
+      "version": "1.0.0",
+      "license": "MIT",
+      "keywords": [
+        "security",
+        "audit",
+        "owasp",
+        "cwe",
+        "sast",
+        "diff",
+        "pull-request",
+        "code-review"
+      ]
+    }
+  ]
+}

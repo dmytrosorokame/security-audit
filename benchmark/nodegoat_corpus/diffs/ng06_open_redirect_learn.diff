@@ -1,0 +1,15 @@
+diff --git a/app/routes/index.js b/app/routes/index.js
+index 1111111..2222222 100644
+--- a/app/routes/index.js
++++ b/app/routes/index.js
+@@ -40,7 +40,8 @@ const AppRoutes = function(app, db) {
+     app.get("/learn", isLoggedIn, (req, res) => {
+-        if (isWhitelistedUrl(req.query.url)) {
+-            return res.redirect(req.query.url);
+-        }
+-        return res.redirect("/dashboard");
++        // Insecure way to handle redirects by taking redirect url from query string
++        return res.redirect(req.query.url);
+     });
+
+     // The api login and logout routes

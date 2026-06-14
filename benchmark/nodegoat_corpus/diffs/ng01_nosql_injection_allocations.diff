@@ -1,0 +1,20 @@
+diff --git a/app/data/allocations-dao.js b/app/data/allocations-dao.js
+index 1111111..2222222 100644
+--- a/app/data/allocations-dao.js
++++ b/app/data/allocations-dao.js
+@@ -10,11 +10,9 @@ function AllocationsDAO(db) {
+         const searchCriteria = () => {
+
+             if (threshold) {
+-                const parsedThreshold = parseInt(threshold, 10);
+-
+-                if (parsedThreshold >= 0 && parsedThreshold <= 99) {
+-                    return {$where: `this.userId == ${parsedUserId} && this.stocks > ${parsedThreshold}`};
+-                }
+-                throw `The user supplied threshold: ${parsedThreshold} was not valid.`;
++                return {
++                    $where: `this.userId == ${parsedUserId} && this.stocks > '${threshold}'`
++                };
+             }
+             return {
+                 userId: parsedUserId

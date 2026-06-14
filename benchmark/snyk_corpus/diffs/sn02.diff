@@ -1,0 +1,19 @@
+diff --git a/src/auth/session.ts b/src/auth/session.ts
+index 1c2d3e4..2d3e4f5 100644
+--- a/src/auth/session.ts
++++ b/src/auth/session.ts
+@@ -1,12 +1,11 @@
+-// Token is kept only in memory; the server sets an httpOnly, Secure cookie
+-// for the actual session. The in-memory copy never survives a reload.
+-let authToken: string | null = null;
+-
+ export async function login(email: string, password: string): Promise<void> {
+   const res = await fetch('/api/login', {
+     method: 'POST',
+     body: JSON.stringify({ email, password }),
+   });
+   const { token } = await res.json();
+-  authToken = token;
++  // Persisting the auth token in localStorage exposes it to any XSS on the page.
++  localStorage.setItem('authToken', token);
+ }

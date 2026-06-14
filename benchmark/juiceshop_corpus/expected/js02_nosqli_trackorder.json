@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — NoSQL injection via $where in track-order lookup",
+  "diff": "../diffs/js02_nosqli_trackorder.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-03", "owasp_id": "A05", "cwe_id": "CWE-943", "severity": "high", "accept_alternatives": ["B-01"] } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/trackOrder.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: NoSQL DoS." },
+  "notes": "req.params.id (only truncated via utils.trunc) is interpolated into a MongoDB $where clause, which executes server-side JavaScript — enabling NoSQL injection / DoS. Fix sanitises id and uses a structured { orderId: id } query."
+}

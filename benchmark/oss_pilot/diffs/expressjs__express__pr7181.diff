@@ -1,0 +1,39 @@
+diff --git a/lib/utils.js b/lib/utils.js
+index 56e12b9b541..1dc7dcc27cd 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -287,7 +287,8 @@ function createETagGenerator (options) {
+ 
+ function parseExtendedQueryString(str) {
+   return qs.parse(str, {
+-    allowPrototypes: true
++    allowPrototypes: true,
++    arrayLimit: 1000
+   });
+ }
+ 
+diff --git a/test/req.query.js b/test/req.query.js
+index 6fae592dccc..474b49bea9b 100644
+--- a/test/req.query.js
++++ b/test/req.query.js
+@@ -38,6 +38,20 @@ describe('req', function(){
+         .get('/?user.name=tj')
+         .expect(200, '{"user.name":"tj"}', done);
+       });
++
++      it('should parse more than 20 repeated values as an array', function (done) {
++        var app = createApp('extended');
++        var ids = [];
++        var expected = [];
++        for (var i = 0; i < 25; i++) {
++          ids.push('ids=' + i);
++          expected.push(String(i));
++        }
++
++        request(app)
++        .get('/?' + ids.join('&'))
++        .expect(200, JSON.stringify({ ids: expected }), done);
++      });
+     });
+ 
+     describe('when "query parser" is simple', function () {

@@ -1,0 +1,17 @@
+{
+  "name": "DOMPurify sanitizer call removed",
+  "diff": "../../examples/05_sanitizer_removed.diff",
+  "expected": [
+    {
+      "rule_id": "R-01",
+      "owasp_id": "A05",
+      "cwe_id": "CWE-79",
+      "severity": "high",
+      "accept_alternatives": [
+        "R-02"
+      ]
+    }
+  ],
+  "expect_zero_findings": false,
+  "notes": "Removing DOMPurify before innerHTML or dangerouslySetInnerHTML reintroduces XSS. Either R-01 (dangerouslySetInnerHTML) or R-02 (innerHTML) may match depending on which sink the diff uses."
+}

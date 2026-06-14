@@ -1,0 +1,25 @@
+{
+  "name": "[oss] fastify/fastify PR #6458: enable diagnostics tracking for async error handlers",
+  "diff": "../diffs/fastify__fastify__pr6458.diff",
+  "source": {
+    "repo": "fastify/fastify",
+    "pr": 6458,
+    "html_url": "https://github.com/fastify/fastify/pull/6458",
+    "merged_at": "2026-05-07T08:46:30Z",
+    "title": "fix: enable diagnostics tracking for async error handlers",
+    "stats": {
+      "files": 4,
+      "addedLines": 83,
+      "removedLines": 5
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Threads a kDiagnosticsStore symbol so async error handlers report to the diagnostics channel, plus a test; observability plumbing, no security-relevant change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/fastify/fastify/pull/6458",
+    "note": "Reviewed-TN (single annotator): Threads a kDiagnosticsStore symbol so async error handlers report to the diagnostics channel, plus a test; observability plumbing, no security-relevant change."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "[oss] nodemailer/nodemailer PR #1815: release 8.0.7 (version bump)",
+  "diff": "../diffs/nodemailer__nodemailer__pr1815.diff",
+  "source": {
+    "repo": "nodemailer/nodemailer",
+    "pr": 1815,
+    "html_url": "https://github.com/nodemailer/nodemailer/pull/1815",
+    "merged_at": "2026-04-27T10:23:23Z",
+    "title": "chore(master): release 8.0.7",
+    "stats": {
+      "files": 3,
+      "addedLines": 10,
+      "removedLines": 3
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Version bump and CHANGELOG for the 8.0.7 release; metadata only, no code change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/nodemailer/nodemailer/pull/1815",
+    "note": "Reviewed-TN (single annotator): Version bump and CHANGELOG for the 8.0.7 release; metadata only, no code change."
+  }
+}

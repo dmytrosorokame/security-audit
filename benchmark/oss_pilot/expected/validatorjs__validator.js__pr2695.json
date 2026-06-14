@@ -1,0 +1,25 @@
+{
+  "name": "[oss] validatorjs/validator.js PR #2695: maintenance release (version bump to 13.15.35)",
+  "diff": "../diffs/validatorjs__validator.js__pr2695.diff",
+  "source": {
+    "repo": "validatorjs/validator.js",
+    "pr": 2695,
+    "html_url": "https://github.com/validatorjs/validator.js/pull/2695",
+    "merged_at": "2026-04-01T21:21:52Z",
+    "title": "maintenance: 2604 release",
+    "stats": {
+      "files": 3,
+      "addedLines": 21,
+      "removedLines": 2
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Version bump and CHANGELOG aggregating prior PRs; this diff itself changes only version strings and changelog, no validator logic.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/validatorjs/validator.js/pull/2695",
+    "note": "Reviewed-TN (single annotator): Version bump and CHANGELOG aggregating prior PRs; this diff itself changes only version strings and changelog, no validator logic."
+  }
+}

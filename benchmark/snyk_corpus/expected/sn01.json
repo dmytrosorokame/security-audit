@@ -1,0 +1,14 @@
+{
+  "name": "Snyk breadth — target=\"_blank\" link without rel=\"noopener\" (reverse tabnabbing)",
+  "diff": "../diffs/sn01.diff",
+  "expect_zero_findings": false,
+  "expected": [
+    { "rule_id": "R-03", "owasp_id": "A02", "cwe_id": "CWE-1022", "severity": "medium" }
+  ],
+  "provenance": {
+    "kind": "synthesized",
+    "source": "https://cwe.mitre.org/data/definitions/1022.html",
+    "note": "Constructed snippet illustrating reverse tabnabbing — a target=\"_blank\" anchor that drops rel=\"noopener noreferrer\", letting the destination reach window.opener. Breadth supplement (spec §4.3) — lower realism, not an external-validity claim."
+  },
+  "notes": "Vulnerable (+) side removes rel=\"noopener noreferrer\" from a cross-origin target=\"_blank\" link; safe (-) side keeps it. Matches R-03 pattern; rel is a static literal so high confidence."
+}

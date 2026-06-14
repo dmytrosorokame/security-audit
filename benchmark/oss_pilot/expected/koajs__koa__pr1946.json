@@ -1,0 +1,25 @@
+{
+  "name": "[oss] koajs/koa PR #1946: defer AsyncLocalStorage creation for v8 startup snapshots",
+  "diff": "../diffs/koajs__koa__pr1946.diff",
+  "source": {
+    "repo": "koajs/koa",
+    "pr": 1946,
+    "html_url": "https://github.com/koajs/koa/pull/1946",
+    "merged_at": "2026-03-28T05:37:53Z",
+    "title": "feat: defer AsyncLocalStorage creation for v8 startup snapshots",
+    "stats": {
+      "files": 2,
+      "addedLines": 97,
+      "removedLines": 4
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Defers AsyncLocalStorage instantiation until snapshot deserialization, plus tests; startup-snapshot compatibility fix, no security-relevant change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/koajs/koa/pull/1946",
+    "note": "Reviewed-TN (single annotator): Defers AsyncLocalStorage instantiation until snapshot deserialization, plus tests; startup-snapshot compatibility fix, no security-relevant change."
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "DOM XSS via innerHTML assignment with user-controlled input",
+  "diff": "../../examples/01_dom_xss_introduction.diff",
+  "expected": [
+    {
+      "rule_id": "R-02",
+      "owasp_id": "A05",
+      "cwe_id": "CWE-79",
+      "severity": "high",
+      "accept_alternatives": [
+        "R-01"
+      ]
+    }
+  ],
+  "expect_zero_findings": false,
+  "notes": "The diff assigns `el.innerHTML = comment.body` via a React ref callback. Primary rule is R-02 (innerHTML sink). R-01 (dangerouslySetInnerHTML) is accepted as an alternative because the underlying CWE (CWE-79) and OWASP category (A05 — Injection in the 2025 numbering) are identical; LLMs commonly conflate the two React XSS sinks."
+}

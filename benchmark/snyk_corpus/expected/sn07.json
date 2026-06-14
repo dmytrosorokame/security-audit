@@ -1,0 +1,14 @@
+{
+  "name": "Snyk breadth — hardcoded credentials in a database connection string",
+  "diff": "../diffs/sn07.diff",
+  "expect_zero_findings": false,
+  "expected": [
+    { "rule_id": "B-10", "owasp_id": "A07", "cwe_id": "CWE-798", "severity": "critical" }
+  ],
+  "provenance": {
+    "kind": "synthesized",
+    "source": "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
+    "note": "Constructed snippet illustrating hardcoded credentials — a postgres:// connection URI with an inline user:password literal in source. Breadth supplement (spec §4.3) — lower realism, not an external-validity claim."
+  },
+  "notes": "Vulnerable (+) side passes 'postgres://admin:S3cr3tP4ss@db.internal:5432/app' to createPool; safe (-) side reads process.env.DATABASE_URL. URI literal with :password@ (8-char password) is a TP per B-10."
+}

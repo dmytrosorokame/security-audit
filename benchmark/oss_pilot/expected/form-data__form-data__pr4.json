@@ -1,0 +1,25 @@
+{
+  "name": "[oss] form-data/form-data PR #4: add getCustomHeaders and getLengthSync helpers",
+  "diff": "../diffs/form-data__form-data__pr4.diff",
+  "source": {
+    "repo": "form-data/form-data",
+    "pr": 4,
+    "html_url": "https://github.com/form-data/form-data/pull/4",
+    "merged_at": "2012-06-29T22:02:20Z",
+    "title": "Changes to support custom content-type and getLengthSync.",
+    "stats": {
+      "files": 2,
+      "addedLines": 24,
+      "removedLines": 1
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Adds getCustomHeaders/getLengthSync helpers and a .gitignore entry; new convenience APIs over existing boundary/length logic, no taint or guard change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/form-data/form-data/pull/4",
+    "note": "Reviewed-TN (single annotator): Adds getCustomHeaders/getLengthSync helpers and a .gitignore entry; new convenience APIs over existing boundary/length logic, no taint or guard change."
+  }
+}

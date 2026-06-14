@@ -1,0 +1,13 @@
+diff --git a/src/db/connection.ts b/src/db/connection.ts
+index 8d9e0f1..9e0f1a2 100644
+--- a/src/db/connection.ts
++++ b/src/db/connection.ts
+@@ -1,8 +1,8 @@
+ import { createPool } from './pool';
+
+ export function getPool() {
+-  // Credentials come from the environment / secret manager, never source.
+-  return createPool(process.env.DATABASE_URL!);
++  // Hardcoded user:password embedded in the connection string -> CWE-798.
++  return createPool('postgres://admin:S3cr3tP4ss@db.internal:5432/app');
+ }

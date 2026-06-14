@@ -1,0 +1,17 @@
+{
+  "name": "Prototype pollution: DENY list dropped from deep-merge utility + spread guard removed at call site",
+  "diff": "../diffs/c07_prototype_pollution_via_merge_util.diff",
+  "expected": [
+    {
+      "rule_id": "R-05",
+      "owasp_id": "A08",
+      "cwe_id": "CWE-1321",
+      "severity": "high"
+    }
+  ],
+  "expect_zero_findings": false,
+  "complexity": "compositional",
+  "files_changed": 2,
+  "challenge": "Two regressions reinforce each other. (1) The `__proto__`/`prototype`/`constructor` DENY list is removed from `deep-merge.ts` — the utility now happily walks poisoned keys. (2) The call site in routes/settings.ts drops the defensive shallow-clone (`{ ...current }` → `current`), so a poisoned prototype now leaks into the runtime user-settings object and persists. Either change alone is suspicious; together they constitute a clean prototype-pollution gadget reachable from `PATCH /me/settings`. The analyzer must connect the two files — the utility change explains why the call-site change is now exploitable.",
+  "notes": "This is the highest-difficulty case in the complex corpus: the regression is **compositional**. Each file diff in isolation looks like a minor cleanup. Together they create a security issue. Expected confidence is medium at best — the LLM should emit at least `LIKELY_TP` for the utility-side change and connect the dots if it sees both files. Severity is high (not critical) because exploitation requires the target settings object to be reachable from sensitive code paths."
+}

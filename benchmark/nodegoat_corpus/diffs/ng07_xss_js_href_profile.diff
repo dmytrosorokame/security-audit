@@ -1,0 +1,13 @@
+diff --git a/app/views/profile.html b/app/views/profile.html
+index 1111111..2222222 100644
+--- a/app/views/profile.html
++++ b/app/views/profile.html
+@@ -60,7 +60,9 @@
+                 <div class="form-group">
+-                    <a href="{{firstNameSafeURLString}}">Google search this profile by name</a>
++                    <!-- @FIXME use a properly escaped variable that matches the URL context, for example
++                    refer to a firstNameSafeURLString field on the doc object set by the controller for this template -->
++                    <a href="{{firstNameSafeString}}">Google search this profile by name</a>
+                 </div>
+             </fieldset>
+         </form>

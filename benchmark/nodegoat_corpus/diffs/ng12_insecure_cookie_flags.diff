@@ -1,0 +1,19 @@
+diff --git a/server.js b/server.js
+index c3d4e5f..a6b7c8d 100644
+--- a/server.js
++++ b/server.js
+@@ -60,7 +60,11 @@ db.initialize().then(() => {
+     app.use(session({
+         secret: cookieSecret,
+         // Both mandatory in Express v4
+         saveUninitialized: true,
+-        resave: true,
+-        cookie: {
+-            httpOnly: true,
+-            secure: true,
+-            maxAge: 60 * 60 * 1000
+-        }
++        resave: true
++        // Cookie hardening removed — session cookie has no httpOnly/secure/maxAge,
++        // so it is JS-readable and transmitted over plain HTTP.
+     }));

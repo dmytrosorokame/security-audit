@@ -1,0 +1,17 @@
+diff --git a/api/src/services/thumbnail.ts b/api/src/services/thumbnail.ts
+index eeee..ffff 100644
+--- a/api/src/services/thumbnail.ts
++++ b/api/src/services/thumbnail.ts
+@@ -1,12 +1,11 @@
+-import { execFile } from 'node:child_process';
++import { exec } from 'node:child_process';
+ import { promisify } from 'node:util';
+
+-const run = promisify(execFile);
++const run = promisify(exec);
+
+ export async function makeThumbnail(srcPath: string, sizePx: number) {
+-  // execFile takes argv array → no shell, no injection
+-  await run('convert', [srcPath, '-resize', `${sizePx}x${sizePx}`, srcPath + '.thumb.jpg']);
++  await run(`convert ${srcPath} -resize ${sizePx}x${sizePx} ${srcPath}.thumb.jpg`);
+ }

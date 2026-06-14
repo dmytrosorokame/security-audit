@@ -1,0 +1,14 @@
+{
+  "name": "Snyk breadth — external script without Subresource Integrity / missing CSP",
+  "diff": "../diffs/sn05.diff",
+  "expect_zero_findings": false,
+  "expected": [
+    { "rule_id": "R-10", "owasp_id": "A02", "cwe_id": "CWE-693", "severity": "medium" }
+  ],
+  "provenance": {
+    "kind": "synthesized",
+    "source": "https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity",
+    "note": "Constructed full HTML document loading a CDN script with no integrity/crossorigin and no CSP meta tag. Breadth supplement (spec §4.3) — lower realism, not an external-validity claim."
+  },
+  "notes": "Vulnerable (+) side drops both the integrity/crossorigin attributes from the external <script> and the CSP <meta>; safe (-) side restores them. Full document (<!doctype html>) so R-10 applies."
+}

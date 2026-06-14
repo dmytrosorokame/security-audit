@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A5 — Helmet imported but all security headers disabled",
+  "diff": "../diffs/ng08_missing_helmet.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-09", "owasp_id": "A02", "cwe_id": "CWE-693", "severity": "medium" } ],
+  "provenance": { "kind": "real", "source": "https://github.com/OWASP/NodeGoat/blob/master/server.js", "note": "Inverted the documented fix: removed the app.use(helmet(...)) registration so no CSP/HSTS/frameguard headers are sent." },
+  "notes": "Missing security headers (clickjacking, no CSP, no HSTS). NodeGoat A5 Security Misconfiguration."
+}

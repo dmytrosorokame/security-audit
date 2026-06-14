@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — open redirect via substring allowlist bypass",
+  "diff": "../diffs/js09_open_redirect.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-14", "owasp_id": "A01", "cwe_id": "CWE-601", "severity": "medium" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/redirect.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: Allowlist Bypass." },
+  "notes": "toUrl = query.to is validated with a substring check (toUrl.includes(allowedUrl)) before res.redirect(toUrl). An attacker passes e.g. https://evil.example/?x=https://github.com/juice-shop/juice-shop to satisfy the substring and be redirected off-site. Fix uses exact-match comparison."
+}

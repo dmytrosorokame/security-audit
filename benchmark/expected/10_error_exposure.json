@@ -1,0 +1,13 @@
+{
+  "name": "Stack trace exposed via Express error handler",
+  "diff": "../../examples/10_error_exposure.diff",
+  "expected": [
+    {
+      "rule_id": "B-16",
+      "owasp_id": "A09",
+      "cwe_id": "CWE-209",
+      "severity": "medium"
+    }
+  ],
+  "expect_zero_findings": false
+}

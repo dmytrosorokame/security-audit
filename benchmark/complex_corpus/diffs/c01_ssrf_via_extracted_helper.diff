@@ -1,0 +1,53 @@
+diff --git a/api/src/services/preview.ts b/api/src/services/preview.ts
+index aaaa..bbbb 100644
+--- a/api/src/services/preview.ts
++++ b/api/src/services/preview.ts
+@@ -1,16 +1,12 @@
+ import axios from 'axios';
+ import type { Request, Response } from 'express';
+-
+-const WHITELIST: Record<string, string> = {
+-  twitter: 'https://api.twitter.com/2/tweets/lookup',
+-  github:  'https://api.github.com/repos',
+-};
++import { resolveTarget } from '../utils/url';
+
+ export async function fetchPreview(req: Request, res: Response) {
+-  const url = WHITELIST[req.query.target as string];
+-  if (!url) return res.status(400).end();
+-  const r = await axios.get(url, { timeout: 5000 });
+-  res.json({ html: r.data });
++  const url = resolveTarget(req.query.target as string);
++  if (!url) return res.status(400).end();
++  const r = await axios.get(url, { timeout: 5000 });
++  res.json({ html: r.data });
+ }
+diff --git a/api/src/utils/url.ts b/api/src/utils/url.ts
+new file mode 100644
+index 0000000..ccccccc
+--- /dev/null
++++ b/api/src/utils/url.ts
+@@ -0,0 +1,9 @@
++/**
++ * Resolves the user-supplied target to a fetchable URL.
++ * Future: integrate with our service registry.
++ */
++export function resolveTarget(target: string): string | null {
++  if (!target) return null;
++  // For now, accept any well-formed URL; service registry pending.
++  return /^https?:\/\//.test(target) ? target : null;
++}
+diff --git a/api/test/preview.test.ts b/api/test/preview.test.ts
+index dddd..eeee 100644
+--- a/api/test/preview.test.ts
++++ b/api/test/preview.test.ts
+@@ -1,8 +1,8 @@
+ import { fetchPreview } from '../src/services/preview';
+
+ describe('preview', () => {
+   it('rejects unknown targets', async () => {
+-    const res = { status: jest.fn(() => ({ end: jest.fn() })) };
++    const res = { status: jest.fn(() => ({ end: jest.fn() })), json: jest.fn() };
+     await fetchPreview({ query: { target: 'evil' } } as any, res as any);
+     expect(res.status).toHaveBeenCalledWith(400);
+   });

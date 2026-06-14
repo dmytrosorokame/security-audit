@@ -1,0 +1,7 @@
+{
+  "name": "Pure refactor — extract auth middleware",
+  "diff": "../../examples/03_safe_refactor.diff",
+  "expected": [],
+  "expect_zero_findings": true,
+  "notes": "True negative: no security regressions introduced."
+}

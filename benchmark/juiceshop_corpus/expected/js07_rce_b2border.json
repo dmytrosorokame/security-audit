@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — unsafe eval of user-supplied B2B order data via vm.runInContext",
+  "diff": "../diffs/js07_rce_b2border.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-06", "owasp_id": "A08", "cwe_id": "CWE-502", "severity": "critical" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/b2bOrder.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: Successful RCE DoS." },
+  "notes": "orderLinesData comes straight from body.orderLinesData and is placed into a vm sandbox and executed via vm.runInContext('safeEval(orderLinesData)', ...). Attacker-controlled input is evaluated, enabling RCE/DoS. Fix parses orderLinesData as strict JSON with no code execution."
+}

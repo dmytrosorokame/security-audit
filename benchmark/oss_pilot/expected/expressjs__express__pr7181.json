@@ -1,0 +1,25 @@
+{
+  "name": "[oss] expressjs/express PR #7181: restore >20 repeated-key array parsing via qs arrayLimit:1000",
+  "diff": "../diffs/expressjs__express__pr7181.diff",
+  "source": {
+    "repo": "expressjs/express",
+    "pr": 7181,
+    "html_url": "https://github.com/expressjs/express/pull/7181",
+    "merged_at": "2026-05-08T19:55:03Z",
+    "title": "fix: restore array parsing for req.query repeated keys (#7147)",
+    "stats": {
+      "files": 2,
+      "addedLines": 16,
+      "removedLines": 1
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Adds arrayLimit:1000 to the existing qs.parse extended config (allowPrototypes already present, unchanged); raises an array cap to restore prior behavior, does not remove a guard or introduce a sink.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/expressjs/express/pull/7181",
+    "note": "Reviewed-TN (single annotator): Adds arrayLimit:1000 to the existing qs.parse extended config (allowPrototypes already present, unchanged); raises an array cap to restore prior behavior, does not remove a guard or introduce a sink."
+  }
+}

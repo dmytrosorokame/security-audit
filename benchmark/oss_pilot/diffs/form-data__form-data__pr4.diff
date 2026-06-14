@@ -1,0 +1,58 @@
+diff --git a/.gitignore b/.gitignore
+index 6e5a8ab..8595734 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,3 +1,5 @@
+ *.un~
+ /node_modules/*
+ /test/tmp
++/.idea
++*.iml
+diff --git a/lib/form_data.js b/lib/form_data.js
+index 6416b42..4a52c72 100644
+--- a/lib/form_data.js
++++ b/lib/form_data.js
+@@ -96,7 +96,7 @@ FormData.prototype._lastBoundary = function() {
+ 
+ FormData.prototype.getHeaders = function(userHeaders) {
+   var formHeaders = {
+-    'content-type': 'multipart/form-data; boundary=' + this.getBoundary(),
++    'content-type': 'multipart/form-data; boundary=' + this.getBoundary()
+   };
+ 
+   for (var header in userHeaders) {
+@@ -106,6 +106,17 @@ FormData.prototype.getHeaders = function(userHeaders) {
+   return formHeaders;
+ }
+ 
++FormData.prototype.getCustomHeaders = function(contentType) {
++    contentType = contentType ? contentType : 'multipart/form-data';
++
++    var formHeaders = {
++        'content-type': contentType + '; boundary=' + this.getBoundary(),
++        'content-length': this.getLengthSync()
++    };
++
++    return formHeaders;
++}
++
+ FormData.prototype.getBoundary = function() {
+   if (!this._boundary) {
+     this._generateBoundary();
+@@ -125,6 +136,16 @@ FormData.prototype._generateBoundary = function() {
+   this._boundary = boundary;
+ };
+ 
++FormData.prototype.getLengthSync = function() {
++    var knownLength = this._overheadLength + this._valueLength;
++
++    if (this._streams.length) {
++        knownLength += this._lastBoundary().length;
++    }
++
++    return knownLength;
++};
++
+ FormData.prototype.getLength = function(cb) {
+   var knownLength = this._overheadLength + this._valueLength;
+ 

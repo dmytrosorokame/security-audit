@@ -1,0 +1,8 @@
+# A labelled snapshot of this corpus IS committed (Plan 5). All current sources
+# are permissively licensed (MIT/Apache/ISC/BSD) — see README.md "Attribution &
+# licensing". Committing their diffs (with attribution) and our own labels is
+# therefore permitted and makes the oss_pilot F1 reproducible.
+#
+# IMPORTANT: never commit a diff from a copyleft (GPL/AGPL/LGPL) or
+# unknown-licence source. If a future collection run adds such a repo, add an
+# ignore entry for that specific diff/label below rather than redistributing it.

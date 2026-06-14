@@ -1,0 +1,18 @@
+diff --git a/server/templates/loader.ts b/server/templates/loader.ts
+index 1010..2020 100644
+--- a/server/templates/loader.ts
++++ b/server/templates/loader.ts
+@@ -1,12 +1,9 @@
+ import fs from 'node:fs/promises';
+ import path from 'node:path';
+
+ const TEMPLATES_DIR = '/srv/templates';
+
+ export async function loadTemplate(name: string): Promise<string> {
+-  const safeName = path.basename(name);
+-  const full = path.join(TEMPLATES_DIR, safeName);
+-  if (!full.startsWith(TEMPLATES_DIR + path.sep)) throw new Error('forbidden');
+-  return fs.readFile(full, 'utf8');
++  // Callers always pass a trusted name from our own UI dropdown
++  return fs.readFile(path.join(TEMPLATES_DIR, name), 'utf8');
+ }

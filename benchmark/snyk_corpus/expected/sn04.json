@@ -1,0 +1,14 @@
+{
+  "name": "Snyk breadth — postMessage handler without origin validation",
+  "diff": "../diffs/sn04.diff",
+  "expect_zero_findings": false,
+  "expected": [
+    { "rule_id": "R-09", "owasp_id": "A06", "cwe_id": "CWE-346", "severity": "high" }
+  ],
+  "provenance": {
+    "kind": "synthesized",
+    "source": "https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html",
+    "note": "Constructed snippet illustrating a message handler that processes event.data without checking event.origin, accepting messages from any window. Breadth supplement (spec §4.3) — lower realism, not an external-validity claim."
+  },
+  "notes": "Vulnerable (+) side removes the event.origin guard before handleMessage(event.data); safe (-) side returns unless event.origin === 'https://trusted.example.com'. Missing origin check is a TP per R-09 pattern (a)."
+}

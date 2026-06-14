@@ -1,0 +1,157 @@
+name: benchmark
+
+# The benchmark job calls real LLM APIs and costs money, so it runs ONLY on
+# manual trigger:
+#   - workflow_dispatch: manual trigger from the Actions tab
+#
+# The weekly `schedule` cron was intentionally removed: an unattended run at
+# model=cheap / seeds=1 (the cron defaults) overwrote the committed gpt-5
+# results in benchmark/results.md with degraded numbers. Results are now a
+# fixed, hand-curated artifact — see benchmark/results.md. Re-run manually if
+# you want fresh numbers, then commit them yourself (this workflow no longer
+# pushes to the repo).
+#
+# Requires OPENAI_API_KEY (or ANTHROPIC_API_KEY) in repo secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'LLM provider'
+        required: true
+        default: 'openai'
+        type: choice
+        options:
+          - openai
+          - anthropic
+          - auto
+      model:
+        # Cross-provider list — pick one consistent with the chosen provider.
+        # Generation aliases resolve to the latest revision in each tier
+        # (best=gpt-5 / claude-sonnet-4-6; cheap=gpt-5-mini / claude-haiku-4-5).
+        # Pinned ids are listed below for reproducibility.
+        description: 'Model alias or pinned id (must match provider)'
+        required: true
+        default: 'best'
+        type: choice
+        options:
+          # Generation aliases (auto-resolve per provider)
+          - best
+          - cheap
+          - nano
+          - reasoning
+          # OpenAI — 2025/26 generation
+          - gpt-5
+          - gpt-5-mini
+          - gpt-5-nano
+          - gpt-4.1
+          - gpt-4.1-mini
+          - o3
+          # OpenAI — legacy models
+          - gpt-4o
+          - gpt-4o-mini
+          # Anthropic
+          - sonnet
+          - sonnet-4-6
+          - sonnet-4-5
+          - haiku
+          - opus
+      seeds:
+        description: 'Runs per case (variance estimate at ≥3)'
+        required: true
+        default: '1'
+        type: choice
+        options:
+          - '1'
+          - '3'
+          - '5'
+      case:
+        # When set, run_benchmark.mjs filters every corpus down to the
+        # single case with this id. Use for fast fix-test loops on the
+        # API contract (~1 API call instead of ~141). Leave blank for a
+        # full sweep across all corpora.
+        description: 'Single case id (e.g. 01_dom_xss_introduction); blank = run everything'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    # gpt-5 latency runs ~5-10s per call; full 4-corpus sweep at seeds=3 is
+    # ~141 (single-seed) × 3 = ~423 API calls. With cache disabled for seeds>1
+    # (see run_benchmark.mjs) this lands around 30-50 min. Single-seed cron
+    # runs at `cheap` finish in ~5-10 min — the 60-min cap is sized for the
+    # worst case (manual dispatch on `best` at seeds=3 across all corpora).
+    timeout-minutes: 60
+    permissions:
+      # Read-only: this workflow no longer commits results back to the repo,
+      # so it needs no write scope. Numbers are uploaded as an artifact only.
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # `cache: pnpm` requires pnpm to be on PATH first, so the order
+          # is pnpm setup → node setup (was the other way around). Saves
+          # ~30-60s on install when the lockfile is unchanged.
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+
+      - name: run benchmark
+        id: bench
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SECURITY_AUDIT_DEBUG: '1'
+        run: |
+          # workflow_dispatch inputs are required + typed dropdowns, so they
+          # are always set when triggered. Use model=best for a full gpt-5
+          # run; model=cheap keeps a quick smoke-run inexpensive.
+          PROVIDER="${{ github.event.inputs.provider }}"
+          MODEL="${{ github.event.inputs.model }}"
+          SEEDS="${{ github.event.inputs.seeds }}"
+          CASE="${{ github.event.inputs.case || '' }}"
+          # Single-case mode: skip the auto-commit of results.md (only
+          # meaningful from a full sweep) and shrink the run to ~1 API
+          # call. Used for fast fix-test cycles on the API contract.
+          CASE_ARG=""
+          if [ -n "$CASE" ]; then
+            CASE_ARG="--case=$CASE --no-write"
+            echo "ℹ  single-case mode: $CASE (results.md not refreshed)"
+          fi
+          # F1 thresholds:
+          #   strict 0.6  — exact rule_id match; conservative gate against
+          #               catastrophic catalog-vs-detection drift.
+          #   loose  0.65 — OWASP+CWE class match; reflects the empirical ceiling
+          #               on the complex corpus (diff-only architectural limit
+          #               documented in ADR-001).
+          node benchmark/run_benchmark.mjs \
+            --provider="$PROVIDER" \
+            --model="$MODEL" \
+            --seeds="$SEEDS" \
+            --timeout=120 \
+            --cache-dir=.security-audit-cache \
+            --min-f1-strict=0.6 \
+            --min-f1-loose=0.65 \
+            $CASE_ARG \
+            > /tmp/bench.md
+
+      - name: upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark/results.md
+            /tmp/bench.md
+          retention-days: 90
+
+      # NOTE: the auto-commit step that pushed a refreshed results.md back to
+      # main was removed on purpose. benchmark/results.md is a fixed,
+      # hand-curated artifact; to update it, download the artifact above (or
+      # run the benchmark locally) and commit the numbers yourself.

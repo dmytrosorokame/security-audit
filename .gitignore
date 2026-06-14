@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Benchmark run outputs (raw cache; results.md is tracked)
+benchmark/runs/
+benchmark/cache/
+benchmark/_raw/
+
+# LLM response cache (file-based, written by scan_diff --cache-dir)
+.security-audit-cache/
+
+# Local config
+.security-audit-ignore

@@ -1,0 +1,19 @@
+{
+  "name": "CSRF middleware removed from Express app",
+  "diff": "../diffs/i08_csrf_protection_removed.diff",
+  "expected": [
+    {
+      "rule_id": "B-08",
+      "owasp_id": "A01",
+      "cwe_id": "CWE-352",
+      "severity": "medium",
+      "accept_alternatives": [
+        "NEW_PATTERN"
+      ]
+    }
+  ],
+  "expect_zero_findings": false,
+  "cve_reference": "CWE-352 / OWASP CSRF — pattern documented in countless OSS Express advisories, e.g. CVE-2024-39014 (csurf-removal regression in OSS apps).",
+  "pattern_description": "Removal of `csurf` middleware on the assumption that 'SPA uses Authorization header so CSRF is not relevant'. This is partially true (token-bearer flows are CSRF-immune) but ignores cookie-authenticated routes, mixed-mode auth, and 3rd-party callbacks. The default-on protection should be replaced explicitly per-route, not stripped globally.",
+  "notes": "If the app uses cookies anywhere (login, session, OAuth state), this regression re-introduces CSRF. The 'SPA' justification in the comment is a strong heuristic that the change was made without auditing cookie-auth endpoints. NEEDS_HUMAN verdict is acceptable because the diff alone cannot confirm whether any cookie-auth route remains."
+}

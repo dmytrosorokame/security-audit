@@ -1,0 +1,25 @@
+{
+  "name": "[oss] expressjs/express PR #7224: bump qs to 6.15.1 and body-parser to 1.20.5",
+  "diff": "../diffs/expressjs__express__pr7224.diff",
+  "source": {
+    "repo": "expressjs/express",
+    "pr": 7224,
+    "html_url": "https://github.com/expressjs/express/pull/7224",
+    "merged_at": "2026-05-08T21:26:13Z",
+    "title": "`4.x` update qs to 6.15.1, body-parser 1.20.5",
+    "stats": {
+      "files": 2,
+      "addedLines": 10,
+      "removedLines": 2
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Dependency version bumps (qs, body-parser) plus History.md; upgrades, no source guard change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/expressjs/express/pull/7224",
+    "note": "Reviewed-TN (single annotator): Dependency version bumps (qs, body-parser) plus History.md; upgrades, no source guard change."
+  }
+}

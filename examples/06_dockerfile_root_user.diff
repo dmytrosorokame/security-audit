@@ -1,0 +1,14 @@
+diff --git a/Dockerfile b/Dockerfile
+index 1111111..2222222 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,8 +1,6 @@
+ FROM node:20-alpine
+
+ WORKDIR /app
+ COPY package*.json ./
+ RUN npm ci --omit=dev
+ COPY . .
+-USER node
+ EXPOSE 3000
+ CMD ["node", "server.js"]

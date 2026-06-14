@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A1 — server-side JavaScript injection via eval() on contribution amounts",
+  "diff": "../diffs/ng02_eval_injection_contributions.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-06", "owasp_id": "A08", "cwe_id": "CWE-502", "severity": "critical" } ],
+  "provenance": { "kind": "real", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/routes/contributions.js", "note": "Inverted the documented fix in handleContributionsUpdate: replaced parseInt(req.body.*) with eval(req.body.*) for preTax/afterTax/roth." },
+  "notes": "eval() on request body = arbitrary server-side code execution. Real CWE is CWE-94/95; labelled with B-06's canonical CWE-502 (catalog home for dynamic code execution) so the loose match aligns with analyzer output."
+}

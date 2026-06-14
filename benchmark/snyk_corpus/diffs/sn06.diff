@@ -1,0 +1,23 @@
+diff --git a/src/api/partnerClient.ts b/src/api/partnerClient.ts
+index 7c8d9e0..8d9e0f1 100644
+--- a/src/api/partnerClient.ts
++++ b/src/api/partnerClient.ts
+@@ -1,12 +1,11 @@
+ // Fetches the current user's profile from a cross-origin partner API.
+ export async function fetchPartnerProfile(): Promise<PartnerProfile> {
+-  // Explicit CORS so the browser enforces the cross-origin contract; the
+-  // partner server must return an exact-origin Access-Control-Allow-Origin
+-  // (never '*') alongside Access-Control-Allow-Credentials: true.
+-  const res = await fetch('https://api.partner.com/me', {
+-    credentials: 'include',
+-    mode: 'cors',
+-  });
++  // Sends session cookies to a cross-origin endpoint with mode:'no-cors',
++  // which suppresses the CORS preflight/response checks and silently leaks
++  // credentials cross-origin -> CWE-942.
++  const res = await fetch('https://api.partner.com/me', {
++    credentials: 'include',
++    mode: 'no-cors',
++  });
+   return (await res.json()) as PartnerProfile;
+ }

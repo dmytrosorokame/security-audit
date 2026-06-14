@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A4 — IDOR: allocations read by URL-supplied userId without ownership check",
+  "diff": "../diffs/ng04_idor_allocations.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-11", "owasp_id": "A01", "cwe_id": "CWE-639", "severity": "high" } ],
+  "provenance": { "kind": "real", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/routes/allocations.js", "note": "Inverted the documented fix in displayAllocations: read userId from req.params instead of req.session, dropping the ownership binding." },
+  "notes": "Any authenticated user can read another user's allocations by changing the id in the URL. NodeGoat A4 Insecure DOR."
+}

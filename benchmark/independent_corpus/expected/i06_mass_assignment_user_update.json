@@ -1,0 +1,16 @@
+{
+  "name": "Mass assignment via removed field allowlist (CWE-915 classic pattern)",
+  "diff": "../diffs/i06_mass_assignment_user_update.diff",
+  "expected": [
+    {
+      "rule_id": "B-13",
+      "owasp_id": "A08",
+      "cwe_id": "CWE-915",
+      "severity": "high"
+    }
+  ],
+  "expect_zero_findings": false,
+  "cve_reference": "CWE-915 (GitHub Mass Assignment) — pattern reproduced in numerous OSS advisories: e.g. CVE-2020-9484 (Sequelize plugins), CVE-2022-21643 (loopback)",
+  "pattern_description": "Refactor deletes the explicit allowlist of user-mutable fields (`displayName`, `bio`, `avatarUrl`) and forwards the entire request body to the ORM update. Attacker can set `isAdmin: true`, `role: 'admin'`, `passwordHash: '<known-hash>'` or other privileged fields the User model permits.",
+  "notes": "The 'flexibility' comment is the smell — it acknowledges the developer chose convenience over safety. Even if the User model currently has no privileged fields, future migrations would silently expose new ones via this endpoint."
+}

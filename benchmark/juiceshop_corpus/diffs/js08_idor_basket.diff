@@ -1,0 +1,14 @@
+diff --git a/routes/basket.ts b/routes/basket.ts
+index 4d5e6f7..5e6f7a8 100644
+--- a/routes/basket.ts
++++ b/routes/basket.ts
+@@ -8,9 +8,8 @@ export function retrieveBasket () {
+   return async (req: Request, res: Response, next: NextFunction) => {
+     const id = req.params.id
+-    const user = security.authenticatedUsers.from(req)
+-    if (!user?.bid || user.bid !== parseInt(id, 10)) return res.status(401).json({ error: 'Unauthorized basket access' })
+-    const basket = await BasketModel.findOne({ where: { id }, include: [{ model: ProductModel, paranoid: false, as: 'Products' }] })
++    const basket = await BasketModel.findOne({ where: { id }, include: [{ model: ProductModel, paranoid: false, as: 'Products' }] })
+     if (basket?.Products && basket.Products.length > 0) {
+       for (let i = 0; i < basket.Products.length; i++) {
+         basket.Products[i].name = req.__(basket.Products[i].name)

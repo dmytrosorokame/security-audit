@@ -1,0 +1,24 @@
+diff --git a/server.js b/server.js
+index 3333333..4444444 100644
+--- a/server.js
++++ b/server.js
+@@ -6,7 +6,7 @@
+ const session = require("express-session");
+ const consolidate = require("consolidate");
+ const swig = require("swig");
+-const helmet = require("helmet");
++// const helmet = require("helmet");
+
+ const MongoStore = require("connect-mongo")(session);
+@@ -40,9 +40,7 @@ db.initialize().then(() => {
+     app.use(bodyParser.json());
+
+-    // Fix for A5 - Security MisConfig
+-    // Remove default x-powered-by response header
+-    app.disable("x-powered-by");
+-    app.use(helmet.frameguard());
+-    app.use(helmet.contentSecurityPolicy());
+-    app.use(helmet.hsts());
++    // Helmet imported but all security headers disabled — no CSP/HSTS/frameguard sent.
+
+     app.use(express.static(`${__dirname}/app/assets`));

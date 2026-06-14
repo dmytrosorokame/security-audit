@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A10 — open redirect: /learn redirects to an unvalidated req.query.url",
+  "diff": "../diffs/ng06_open_redirect_learn.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-14", "owasp_id": "A01", "cwe_id": "CWE-601", "severity": "medium" } ],
+  "provenance": { "kind": "real", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/routes/index.js", "note": "Inverted the documented fix on the /learn route: removed allowlist validation so res.redirect uses req.query.url directly." },
+  "notes": "Phishing via trusted-domain redirect. NodeGoat A10 Unvalidated Redirects and Forwards."
+}

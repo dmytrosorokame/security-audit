@@ -1,0 +1,26 @@
+# `git archive` produces a release tarball without the dev-only paths
+# below — useful for users who want to install the skill from a release
+# artifact rather than via the Claude Code marketplace. Has no effect on
+# `git clone`, `/plugin install`, or the working tree; only the archive.
+#
+# Runtime needs: SKILL.md, scripts/, prompts/, references/, package.json,
+# pnpm-lock.yaml, action.yml, .claude-plugin/. Everything else is either
+# diploma scaffolding (benchmark/, docs/, examples/) or dev tooling
+# (eslint, vitest, ci/, .github/).
+
+benchmark/        export-ignore
+docs/             export-ignore
+examples/         export-ignore
+coverage/         export-ignore
+ci/               export-ignore
+.github/          export-ignore
+.editorconfig     export-ignore
+.eslintrc*        export-ignore
+.node-version     export-ignore
+.nvmrc            export-ignore
+.npmrc            export-ignore
+.pre-commit-hooks.yaml  export-ignore
+eslint.config.mjs export-ignore
+vitest.config.mjs export-ignore
+CHANGELOG.md      export-ignore
+CONTRIBUTING.md   export-ignore

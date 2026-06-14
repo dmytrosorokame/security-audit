@@ -1,0 +1,20 @@
+diff --git a/api/src/services/preview.ts b/api/src/services/preview.ts
+index 1111..2222 100644
+--- a/api/src/services/preview.ts
++++ b/api/src/services/preview.ts
+@@ -1,12 +1,11 @@
+ import axios from 'axios';
+ import type { Request, Response } from 'express';
+
+-const WHITELIST: Record<string, string> = {
+-  twitter: 'https://api.twitter.com/...',
+-  github:  'https://api.github.com/...',
+-};
+-
+ export async function fetchPreview(req: Request, res: Response) {
+-  const url = WHITELIST[req.query.target as string];
+-  if (!url) return res.status(400).end();
++  const url = req.query.target as string;
+   const r = await axios.get(url);
+   res.json({ html: r.data });
+ }

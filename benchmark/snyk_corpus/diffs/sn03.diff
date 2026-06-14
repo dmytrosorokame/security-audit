@@ -1,0 +1,13 @@
+diff --git a/src/router/redirect.ts b/src/router/redirect.ts
+index 3e4f5a6..4f5a6b7 100644
+--- a/src/router/redirect.ts
++++ b/src/router/redirect.ts
+@@ -1,11 +1,9 @@
+ export function redirectAfterLogin(): void {
+   const next = new URLSearchParams(window.location.search).get('next') || '';
+-  // Only follow same-origin relative paths; reject absolute/protocol-relative URLs.
+-  const safe = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+-  window.location.href = safe;
++  // next is attacker-controlled (?next=https://evil.example) and used verbatim.
++  window.location.href = next;
+ }

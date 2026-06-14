@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A3 — XSS via javascript: URL in a user-controlled href",
+  "diff": "../diffs/ng07_xss_js_href_profile.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "R-04", "owasp_id": "A05", "cwe_id": "CWE-79", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/views/profile.html", "note": "Vulnerable side is verbatim-real NodeGoat master code (raw {{firstNameSafeString}} interpolation into an href, with the @FIXME comment). NodeGoat ships no committed safe href, so the safe baseline (-) side uses the URL-encoded field the FIXME names ({{firstNameSafeURLString}}); hence kind=synthesized." },
+  "notes": "Swig autoescape is disabled in server.js, widening exposure. NodeGoat A3 XSS. R-04 covers javascript: URLs in href/src."
+}

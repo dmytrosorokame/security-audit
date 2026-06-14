@@ -1,0 +1,13 @@
+diff --git a/app/routes/index.js b/app/routes/index.js
+index b2c3d4e..f5a6b7c 100644
+--- a/app/routes/index.js
++++ b/app/routes/index.js
+@@ -45,8 +45,9 @@ const index = (app, db) => {
+     // Benefits Page
+-    app.get("/benefits", isLoggedIn, isAdmin, benefitsHandler.displayBenefits);
+-    app.post("/benefits", isLoggedIn, isAdmin, benefitsHandler.updateBenefits);
++    app.get("/benefits", isLoggedIn, benefitsHandler.displayBenefits);
++    app.post("/benefits", isLoggedIn, benefitsHandler.updateBenefits);
++    // No isAdmin guard — any authenticated user can reach the admin benefits actions.
+
+     // Allocations Page

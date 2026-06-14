@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — SSTI: user-controlled username concatenated into a Pug template",
+  "diff": "../diffs/js10_ssti_userprofile.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-15", "owasp_id": "A05", "cwe_id": "CWE-94", "severity": "critical" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/userProfile.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: SSTI." },
+  "notes": "username = user.username is string-substituted into the Pug source via template.replace(/_username_/g, username) and then pug.compile(template) — a crafted username becomes template code (SSTI -> RCE). Fix compiles a static template and passes username as a runtime local, so it is escaped data rather than template source."
+}

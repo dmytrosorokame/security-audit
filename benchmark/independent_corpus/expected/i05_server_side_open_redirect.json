@@ -1,0 +1,16 @@
+{
+  "name": "Server-side open redirect via removed allowlist (CVE-2024-21505 family)",
+  "diff": "../diffs/i05_server_side_open_redirect.diff",
+  "expected": [
+    {
+      "rule_id": "B-14",
+      "owasp_id": "A01",
+      "cwe_id": "CWE-601",
+      "severity": "medium"
+    }
+  ],
+  "expect_zero_findings": false,
+  "cve_reference": "CVE-2024-21505 (sequelize-typescript) / CVE-2023-26159 (follow-redirects) — open-redirect class",
+  "pattern_description": "The allowlist check on the `returnTo` host is deleted along with the URL parsing. `res.redirect(req.query.returnTo)` passes user input directly. Attacker crafts a phishing link `?returnTo=https://evil.example/login` and the legitimate app does the redirect.",
+  "notes": "Open redirect findings are usually medium severity but become high when chained with OAuth callbacks. The diff also breaks the safe-default fallback to `/` — the unconditional redirect honours any user-supplied URL."
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Juice Shop TN — hardened redirect allowlist (no open redirect)",
+  "diff": "../diffs/tn02_hardened_redirect.diff",
+  "expect_zero_findings": true,
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/redirect.ts", "note": "True-negative control: redirect guarded by an exact/startsWith allowlist. Verifies the analyzer does not flag a correctly-validated redirect." },
+  "notes": "Both sides validate toUrl = query.to against redirectAllowlist with exact-match (plus an anchored startsWith for query strings) before res.redirect — never a substring includes() check. No vulnerability is introduced; this is the safe counterpart to js09 and must produce zero findings."
+}

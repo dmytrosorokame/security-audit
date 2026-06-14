@@ -1,0 +1,19 @@
+diff --git a/api/src/error_handler.ts b/api/src/error_handler.ts
+index 1111..2222 100644
+--- a/api/src/error_handler.ts
++++ b/api/src/error_handler.ts
+@@ -1,13 +1,6 @@
+ import type { ErrorRequestHandler } from 'express';
+ import { logger } from './logger';
+
+-// Generic 500 — the client cannot distinguish between cause families,
+-// which is the point. Detail stays in the server log only; a correlation
+-// id lets support staff find the matching log entry.
+ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+-  logger.error({ err, requestId: req.id, path: req.path });
+-  res.status(500).json({
+-    error: 'Internal Server Error',
+-    requestId: req.id,
+-  });
++  res.status(500).json({ error: err.stack });
+ };

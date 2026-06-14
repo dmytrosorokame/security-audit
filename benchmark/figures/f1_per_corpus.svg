@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+<rect x="0" y="0" width="900" height="520" fill="#ffffff"/>
+<text x="450" y="32.76" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="18" fill="#222222" text-anchor="middle" font-weight="bold">Detection F1 per corpus (strict vs loose) — 95% CI</text>
+<line x1="70" y1="440" x2="860" y2="440" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="443.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.00</text>
+<line x1="70" y1="366" x2="860" y2="366" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="369.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.20</text>
+<line x1="70" y1="292" x2="860" y2="292" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="295.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.40</text>
+<line x1="70" y1="218" x2="860" y2="218" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="221.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.60</text>
+<line x1="70" y1="144" x2="860" y2="144" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="147.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">0.80</text>
+<line x1="70" y1="70" x2="860" y2="70" stroke="#dddddd" stroke-width="1"/>
+<text x="62" y="73.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#888888" text-anchor="end">1.00</text>
+<line x1="70" y1="70" x2="70" y2="440" stroke="#444444" stroke-width="1.5"/>
+<line x1="70" y1="440" x2="860" y2="440" stroke="#444444" stroke-width="1.5"/>
+<rect x="90.88" y="94.79" width="33.86" height="345.21" fill="#1f77b4"/>
+<line x1="107.81" y1="70" x2="107.81" y2="155.47" stroke="#444444" stroke-width="1.5"/>
+<line x1="102.81" y1="70" x2="112.81" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="102.81" y1="155.47" x2="112.81" y2="155.47" stroke="#444444" stroke-width="1.5"/>
+<rect x="128.12" y="94.79" width="33.86" height="345.21" fill="#ff7f0e"/>
+<line x1="145.05" y1="70" x2="145.05" y2="155.47" stroke="#444444" stroke-width="1.5"/>
+<line x1="140.05" y1="70" x2="150.05" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="140.05" y1="155.47" x2="150.05" y2="155.47" stroke="#444444" stroke-width="1.5"/>
+<text x="126.43" y="87.81" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.933</text>
+<text x="126.43" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">smoke</text>
+<rect x="203.74" y="89.61" width="33.86" height="350.39" fill="#1f77b4"/>
+<line x1="220.66" y1="70" x2="220.66" y2="128.46" stroke="#444444" stroke-width="1.5"/>
+<line x1="215.66" y1="70" x2="225.66" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="215.66" y1="128.46" x2="225.66" y2="128.46" stroke="#444444" stroke-width="1.5"/>
+<rect x="240.98" y="89.61" width="33.86" height="350.39" fill="#ff7f0e"/>
+<line x1="257.91" y1="70" x2="257.91" y2="128.46" stroke="#444444" stroke-width="1.5"/>
+<line x1="252.91" y1="70" x2="262.91" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="252.91" y1="128.46" x2="262.91" y2="128.46" stroke="#444444" stroke-width="1.5"/>
+<text x="239.29" y="82.63" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.947</text>
+<text x="239.29" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">independent</text>
+<rect x="316.59" y="103.67" width="33.86" height="336.33" fill="#1f77b4"/>
+<line x1="333.52" y1="70" x2="333.52" y2="193.21" stroke="#444444" stroke-width="1.5"/>
+<line x1="328.52" y1="70" x2="338.52" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="328.52" y1="193.21" x2="338.52" y2="193.21" stroke="#444444" stroke-width="1.5"/>
+<rect x="353.84" y="103.67" width="33.86" height="336.33" fill="#ff7f0e"/>
+<line x1="370.76" y1="70" x2="370.76" y2="193.21" stroke="#444444" stroke-width="1.5"/>
+<line x1="365.76" y1="70" x2="375.76" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="365.76" y1="193.21" x2="375.76" y2="193.21" stroke="#444444" stroke-width="1.5"/>
+<text x="352.14" y="96.69" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.909</text>
+<text x="352.14" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">complex</text>
+<rect x="429.45" y="133.64" width="33.86" height="306.36" fill="#1f77b4"/>
+<line x1="446.38" y1="83.69" x2="446.38" y2="185.44" stroke="#444444" stroke-width="1.5"/>
+<line x1="441.38" y1="83.69" x2="451.38" y2="83.69" stroke="#444444" stroke-width="1.5"/>
+<line x1="441.38" y1="185.44" x2="451.38" y2="185.44" stroke="#444444" stroke-width="1.5"/>
+<rect x="466.69" y="133.64" width="33.86" height="306.36" fill="#ff7f0e"/>
+<line x1="483.62" y1="83.69" x2="483.62" y2="185.44" stroke="#444444" stroke-width="1.5"/>
+<line x1="478.62" y1="83.69" x2="488.62" y2="83.69" stroke="#444444" stroke-width="1.5"/>
+<line x1="478.62" y1="185.44" x2="488.62" y2="185.44" stroke="#444444" stroke-width="1.5"/>
+<text x="465" y="126.66" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.828</text>
+<text x="465" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">nodegoat</text>
+<rect x="542.31" y="103.67" width="33.86" height="336.33" fill="#1f77b4"/>
+<line x1="559.24" y1="70" x2="559.24" y2="162.5" stroke="#444444" stroke-width="1.5"/>
+<line x1="554.24" y1="70" x2="564.24" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="554.24" y1="162.5" x2="564.24" y2="162.5" stroke="#444444" stroke-width="1.5"/>
+<rect x="579.55" y="103.67" width="33.86" height="336.33" fill="#ff7f0e"/>
+<line x1="596.48" y1="70" x2="596.48" y2="162.5" stroke="#444444" stroke-width="1.5"/>
+<line x1="591.48" y1="70" x2="601.48" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="591.48" y1="162.5" x2="601.48" y2="162.5" stroke="#444444" stroke-width="1.5"/>
+<text x="577.86" y="96.69" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.909</text>
+<text x="577.86" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">juiceshop</text>
+<rect x="655.16" y="70" width="33.86" height="370" fill="#1f77b4"/>
+<line x1="672.09" y1="70" x2="672.09" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="667.09" y1="70" x2="677.09" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="667.09" y1="70" x2="677.09" y2="70" stroke="#444444" stroke-width="1.5"/>
+<rect x="692.41" y="70" width="33.86" height="370" fill="#ff7f0e"/>
+<line x1="709.34" y1="70" x2="709.34" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="704.34" y1="70" x2="714.34" y2="70" stroke="#444444" stroke-width="1.5"/>
+<line x1="704.34" y1="70" x2="714.34" y2="70" stroke="#444444" stroke-width="1.5"/>
+<text x="690.71" y="63.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">1.000</text>
+<text x="690.71" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">snyk</text>
+<rect x="768.02" y="175.82" width="33.86" height="264.18" fill="#1f77b4"/>
+<line x1="784.95" y1="94.79" x2="784.95" y2="316.79" stroke="#444444" stroke-width="1.5"/>
+<line x1="779.95" y1="94.79" x2="789.95" y2="94.79" stroke="#444444" stroke-width="1.5"/>
+<line x1="779.95" y1="316.79" x2="789.95" y2="316.79" stroke="#444444" stroke-width="1.5"/>
+<rect x="805.26" y="175.82" width="33.86" height="264.18" fill="#ff7f0e"/>
+<line x1="822.19" y1="94.79" x2="822.19" y2="316.79" stroke="#444444" stroke-width="1.5"/>
+<line x1="817.19" y1="94.79" x2="827.19" y2="94.79" stroke="#444444" stroke-width="1.5"/>
+<line x1="817.19" y1="316.79" x2="827.19" y2="316.79" stroke="#444444" stroke-width="1.5"/>
+<text x="803.57" y="168.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">0.714</text>
+<text x="803.57" y="457.02" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" fill="#222222" text-anchor="middle">oss_pilot</text>
+<rect x="70" y="492" width="12" height="12" fill="#1f77b4"/>
+<text x="87" y="502.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">strict (rule_id)</text>
+<rect x="222.2" y="492" width="12" height="12" fill="#ff7f0e"/>
+<text x="239.2" y="502.84" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" fill="#222222" text-anchor="start">loose (OWASP+CWE)</text>
+</svg>

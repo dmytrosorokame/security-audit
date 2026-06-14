@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A1 — NoSQL injection via $where string interpolation in allocations search",
+  "diff": "../diffs/ng01_nosql_injection_allocations.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-03", "owasp_id": "A05", "cwe_id": "CWE-943", "severity": "high", "accept_alternatives": ["B-01"] } ],
+  "provenance": { "kind": "real", "source": "https://github.com/OWASP/NodeGoat/blob/master/app/data/allocations-dao.js", "note": "Inverted the documented fix in getByUserIdAndThreshold: replaced the structured query with the original $where template-literal that interpolates the unsanitised threshold." },
+  "notes": "MongoDB $where executes server-side JS; unsanitised threshold enables operator/JS injection. NodeGoat A1 Injection."
+}

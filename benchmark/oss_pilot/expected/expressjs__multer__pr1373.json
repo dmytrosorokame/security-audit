@@ -1,0 +1,25 @@
+{
+  "name": "[oss] expressjs/multer PR #1373: fix error/abort handling (drain body before next(err))",
+  "diff": "../diffs/expressjs__multer__pr1373.diff",
+  "source": {
+    "repo": "expressjs/multer",
+    "pr": 1373,
+    "html_url": "https://github.com/expressjs/multer/pull/1373",
+    "merged_at": "2026-03-02T21:59:11Z",
+    "title": "fix error/abort handling",
+    "stats": {
+      "files": 2,
+      "addedLines": 137,
+      "removedLines": 5
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Reworks multer error/abort flow to drain the request body and guard against duplicate next() calls plus a regression test; robustness fix, no new taint/sink or removed validation.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/expressjs/multer/pull/1373",
+    "note": "Reviewed-TN (single annotator): Reworks multer error/abort flow to drain the request body and guard against duplicate next() calls plus a regression test; robustness fix, no new taint/sink or removed validation."
+  }
+}

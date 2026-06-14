@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — zip-slip path traversal on extracted archive entry",
+  "diff": "../diffs/js06_zipslip_fileupload.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-05", "owasp_id": "A01", "cwe_id": "CWE-22", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/fileUpload.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: Arbitrary File Write." },
+  "notes": "Each extracted entry path is written to 'uploads/complaints/' + fileName, guarded only by absolutePath.includes(path.resolve('.')) — which a '../' entry still satisfies, allowing zip-slip writes outside the upload dir. Fix rejects entries whose resolved path does not start with the intended uploads/complaints/ directory."
+}

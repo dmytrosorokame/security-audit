@@ -1,0 +1,25 @@
+{
+  "name": "[oss] koajs/koa PR #1930: add workflow_dispatch trigger to npm-publish workflow",
+  "diff": "../diffs/koajs__koa__pr1930.diff",
+  "source": {
+    "repo": "koajs/koa",
+    "pr": 1930,
+    "html_url": "https://github.com/koajs/koa/pull/1930",
+    "merged_at": "2026-02-25T13:53:24Z",
+    "title": "chore: Add workflow_dispatch trigger to npm-publish workflow",
+    "stats": {
+      "files": 1,
+      "addedLines": 11,
+      "removedLines": 1
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Adds a manual workflow_dispatch input (tag to checkout/publish) to the publish CI workflow; the checked-out ref comes from a maintainer-supplied input on a privileged workflow, not external PR input, so no untrusted-checkout regression. CI config, not app code.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/koajs/koa/pull/1930",
+    "note": "Reviewed-TN (single annotator): Adds a manual workflow_dispatch input (tag to checkout/publish) to the publish CI workflow; the checked-out ref comes from a maintainer-supplied input on a privileged workflow, not external PR input, so no untrusted-checkout regression. CI config, not app code."
+  }
+}

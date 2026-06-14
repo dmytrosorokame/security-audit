@@ -1,0 +1,25 @@
+{
+  "name": "[oss] koajs/koa PR #1927: bump dev qs from 6.14.1 to 6.14.2 (lockfile)",
+  "diff": "../diffs/koajs__koa__pr1927.diff",
+  "source": {
+    "repo": "koajs/koa",
+    "pr": 1927,
+    "html_url": "https://github.com/koajs/koa/pull/1927",
+    "merged_at": "2026-02-25T13:40:48Z",
+    "title": "build(deps-dev): bump qs from 6.14.1 to 6.14.2",
+    "stats": {
+      "files": 1,
+      "addedLines": 3,
+      "removedLines": 9
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "package-lock.json-only dev dependency bump of qs and peer-flag cleanup; no source change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/koajs/koa/pull/1927",
+    "note": "Reviewed-TN (single annotator): package-lock.json-only dev dependency bump of qs and peer-flag cleanup; no source change."
+  }
+}

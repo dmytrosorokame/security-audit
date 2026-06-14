@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — unsalted MD5 used for password hashing",
+  "diff": "../diffs/js03_weak_crypto_md5.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-07", "owasp_id": "A04", "cwe_id": "CWE-327", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/lib/insecurity.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: Weird Crypto." },
+  "notes": "The shared hash() helper uses unsalted MD5, a broken fast hash, to derive password hashes — trivially reversible via rainbow tables. Fix uses bcrypt.hashSync with a cost factor."
+}

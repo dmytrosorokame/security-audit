@@ -1,0 +1,18 @@
+diff --git a/api/src/handlers/legacy_search.ts b/api/src/handlers/search.ts
+similarity index 78%
+rename from api/src/handlers/legacy_search.ts
+rename to api/src/handlers/search.ts
+index aaaa..bbbb 100644
+--- a/api/src/handlers/legacy_search.ts
++++ b/api/src/handlers/search.ts
+@@ -1,8 +1,9 @@
+ import { db } from '../db';
+
+ export async function searchUsers(req, res) {
+-  const term = req.query.q?.toString() ?? '';
+-  const rows = await db.query('SELECT id, name FROM users WHERE name = $1', [term]);
++  // Migrated from parameterised query to ORM helper — but the new code drops the
++  // parameter binding and concatenates the term directly into raw SQL.
++  const rows = await db.query(`SELECT id, name FROM users WHERE name LIKE '%${req.query.q}%'`);
+   res.json(rows);
+ }

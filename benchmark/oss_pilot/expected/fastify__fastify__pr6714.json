@@ -1,0 +1,25 @@
+{
+  "name": "[oss] fastify/fastify PR #6714: ignore duplicate trailer completions",
+  "diff": "../diffs/fastify__fastify__pr6714.diff",
+  "source": {
+    "repo": "fastify/fastify",
+    "pr": 6714,
+    "html_url": "https://github.com/fastify/fastify/pull/6714",
+    "merged_at": "2026-05-07T08:47:07Z",
+    "title": "fix: ignore duplicate trailer completions",
+    "stats": {
+      "files": 2,
+      "addedLines": 33,
+      "removedLines": 2
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Adds a cbAlreadyCalled guard so a trailer callback runs once when mixing callback and promise, plus a test; idempotency fix, no security impact.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/fastify/fastify/pull/6714",
+    "note": "Reviewed-TN (single annotator): Adds a cbAlreadyCalled guard so a trailer callback runs once when mixing callback and promise, plus a test; idempotency fix, no security impact."
+  }
+}

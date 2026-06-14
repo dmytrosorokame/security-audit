@@ -1,0 +1,51 @@
+diff --git a/web/src/components/MarkdownRenderer.tsx b/web/src/components/MarkdownRenderer.tsx
+index 1010..2020 100644
+--- a/web/src/components/MarkdownRenderer.tsx
++++ b/web/src/components/MarkdownRenderer.tsx
+@@ -1,14 +1,11 @@
+-import { marked } from 'marked';
+-import DOMPurify from 'isomorphic-dompurify';
++import { renderMarkdown } from '../lib/markdown';
+
+ type Props = { source: string };
+
+ export function MarkdownRenderer({ source }: Props) {
+-  const html = marked.parse(source) as string;
+-  const safe = DOMPurify.sanitize(html);
+-  return <div dangerouslySetInnerHTML={{ __html: safe }} />;
++  const html = renderMarkdown(source);
++  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+ }
+diff --git a/web/src/lib/markdown.ts b/web/src/lib/markdown.ts
+new file mode 100644
+index 0000000..3030303
+--- /dev/null
++++ b/web/src/lib/markdown.ts
+@@ -0,0 +1,17 @@
++import { marked } from 'marked';
++import DOMPurify from 'isomorphic-dompurify';
++
++/**
++ * Renders markdown to sanitised HTML.
++ * The sanitiser is configured to allow rich content for our editor preview.
++ */
++export function renderMarkdown(source: string): string {
++  const html = marked.parse(source) as string;
++  return DOMPurify.sanitize(html, {
++    ADD_TAGS: ['iframe', 'script'],
++    ADD_ATTR: ['onerror', 'onload', 'srcdoc'],
++  });
++}
++
++// Re-export for legacy callers
++export const sanitize = (s: string) => s;
+diff --git a/web/src/components/CommentList.tsx b/web/src/components/CommentList.tsx
+index 4040..5050 100644
+--- a/web/src/components/CommentList.tsx
++++ b/web/src/components/CommentList.tsx
+@@ -1,4 +1,4 @@
+-import { sanitize } from '../lib/markdown';
++import { sanitize } from '../lib/markdown';
+
+ export function CommentList({ comments }: { comments: { body: string }[] }) {
+   return (

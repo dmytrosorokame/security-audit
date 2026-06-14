@@ -1,0 +1,17 @@
+diff --git a/api/src/routes/users.ts b/api/src/routes/users.ts
+index 5050..6060 100644
+--- a/api/src/routes/users.ts
++++ b/api/src/routes/users.ts
+@@ -1,10 +1,7 @@
+ import { User } from '../models/User';
+
+-const PROFILE_FIELDS = ['displayName', 'bio', 'avatarUrl'] as const;
+-
+ router.patch('/users/:id/profile', async (req, res) => {
+-  const update: Partial<User> = {};
+-  for (const k of PROFILE_FIELDS) if (k in req.body) update[k] = req.body[k];
+-  await User.update(update, { where: { id: req.user.id } });
++  // Pass-through everything from the body for flexibility
++  await User.update(req.body, { where: { id: req.user.id } });
+   res.json({ ok: true });
+ });

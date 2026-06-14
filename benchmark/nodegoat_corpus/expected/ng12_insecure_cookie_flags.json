@@ -1,0 +1,8 @@
+{
+  "name": "NodeGoat A5/A3 — session cookie configured without httpOnly/secure flags",
+  "diff": "../diffs/ng12_insecure_cookie_flags.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-20", "owasp_id": "A02", "cwe_id": "CWE-1004", "severity": "medium" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/OWASP/NodeGoat/blob/master/server.js", "note": "Vulnerable (+) side is verbatim-real: NodeGoat master configures express-session with no active cookie hardening (the 'Fix for A3 - XSS' cookie block is commented out and even there 'secure' is commented and 'maxAge' is only a TODO). The safe (-) side with a complete httpOnly+secure+maxAge cookie block is reconstructed, since master ships no committed/complete hardened cookie config." },
+  "notes": "Session cookie is JS-readable (no httpOnly) and sent over HTTP (no secure). Coverage gap closed by new rule B-20."
+}

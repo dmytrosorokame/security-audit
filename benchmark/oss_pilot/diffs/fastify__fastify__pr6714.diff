@@ -1,0 +1,58 @@
+diff --git a/lib/reply.js b/lib/reply.js
+index 024b297a38..38d2ca97af 100644
+--- a/lib/reply.js
++++ b/lib/reply.js
+@@ -848,9 +848,10 @@ function sendTrailer (payload, res, reply) {
+     skipped = false
+     handled--
+ 
++    let cbAlreadyCalled = false
+     function cb (err, value) {
+-      // TODO: we may protect multiple callback calls
+-      //       or mixing async-await with callback
++      if (cbAlreadyCalled) return
++      cbAlreadyCalled = true
+       handled++
+ 
+       // we can safely ignore error for trailer
+diff --git a/test/reply-trailers.test.js b/test/reply-trailers.test.js
+index f7d948fee3..efeb062cb9 100644
+--- a/test/reply-trailers.test.js
++++ b/test/reply-trailers.test.js
+@@ -306,6 +306,36 @@ describe('trailer handler counter', () => {
+       testDone()
+     })
+   })
++
++  test('mixed callback and promise trailers only use the first completion', (t, testDone) => {
++    t.plan(7)
++    const fastify = Fastify()
++
++    fastify.get('/', function (request, reply) {
++      reply.trailer('Async', function (reply, payload, done) {
++        setTimeout(() => done(null, 'async'), 10)
++      })
++      reply.trailer('Mixed', function (reply, payload, done) {
++        done(null, 'correct')
++        return Promise.resolve('corrupted')
++      })
++      reply.send('hello')
++    })
++
++    fastify.inject({
++      method: 'GET',
++      url: '/'
++    }, (error, res) => {
++      t.assert.ifError(error)
++      t.assert.strictEqual(res.statusCode, 200)
++      t.assert.strictEqual(res.headers['transfer-encoding'], 'chunked')
++      t.assert.strictEqual(res.headers.trailer, 'async mixed')
++      t.assert.strictEqual(res.trailers.async, 'async')
++      t.assert.strictEqual(res.trailers.mixed, 'correct')
++      t.assert.ok(!res.headers['content-length'])
++      testDone()
++    })
++  })
+ })
+ 
+ test('removeTrailer', (t, testDone) => {

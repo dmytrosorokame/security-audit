@@ -1,0 +1,25 @@
+{
+  "name": "[oss] Automattic/mongoose PR #16278: preserve $setOnInsert.createdAt with overwriteImmutable:true (timestamp logic)",
+  "diff": "../diffs/Automattic__mongoose__pr16278.diff",
+  "source": {
+    "repo": "Automattic/mongoose",
+    "pr": 16278,
+    "html_url": "https://github.com/Automattic/mongoose/pull/16278",
+    "merged_at": "2026-05-12T16:21:38Z",
+    "title": "fix(update): preserve $setOnInsert.createdAt with overwriteImmutable: true",
+    "stats": {
+      "files": 2,
+      "addedLines": 70,
+      "removedLines": 120
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Adds $setOnInsert to the createdAt-presence check in update timestamp logic plus test refactor; pure correctness fix, no taint/guard/sink change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/Automattic/mongoose/pull/16278",
+    "note": "Reviewed-TN (single annotator): Adds $setOnInsert to the createdAt-presence check in update timestamp logic plus test refactor; pure correctness fix, no taint/guard/sink change."
+  }
+}

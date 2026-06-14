@@ -1,0 +1,25 @@
+{
+  "name": "[oss] nodemailer/nodemailer PR #1814: keep envelope domain as UTF-8 when local part is non-ASCII",
+  "diff": "../diffs/nodemailer__nodemailer__pr1814.diff",
+  "source": {
+    "repo": "nodemailer/nodemailer",
+    "pr": 1814,
+    "html_url": "https://github.com/nodemailer/nodemailer/pull/1814",
+    "merged_at": "2026-04-27T09:27:17Z",
+    "title": "fix: keep domain as UTF-8 when local part is non-ASCII",
+    "stats": {
+      "files": 2,
+      "addedLines": 107,
+      "removedLines": 9
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Branches address-domain encoding to keep UTF-8 (punycode.toUnicode) when the local part is non-ASCII, plus tests; encoding correctness fix, no injection guard removed.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/nodemailer/nodemailer/pull/1814",
+    "note": "Reviewed-TN (single annotator): Branches address-domain encoding to keep UTF-8 (punycode.toUnicode) when the local part is non-ASCII, plus tests; encoding correctness fix, no injection guard removed."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "[oss] axios/axios PR #10890: docs: clarify security disclosure policy",
+  "diff": "../diffs/axios__axios__pr10890.diff",
+  "source": {
+    "repo": "axios/axios",
+    "pr": 10890,
+    "html_url": "https://github.com/axios/axios/pull/10890",
+    "merged_at": "2026-05-13T17:23:34Z",
+    "title": "chore: clarify disclosure policy",
+    "stats": {
+      "files": 1,
+      "addedLines": 2,
+      "removedLines": 10
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Markdown-only edit to SECURITY.md disclosure wording; no code touched.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/axios/axios/pull/10890",
+    "note": "Reviewed-TN (single annotator): Markdown-only edit to SECURITY.md disclosure wording; no code touched."
+  }
+}

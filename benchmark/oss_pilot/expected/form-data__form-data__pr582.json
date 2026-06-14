@@ -1,0 +1,25 @@
+{
+  "name": "[oss] form-data/form-data PR #582: switch boundary-prediction test to js-randomness-predictor; node 24",
+  "diff": "../diffs/form-data__form-data__pr582.diff",
+  "source": {
+    "repo": "form-data/form-data",
+    "pr": 582,
+    "html_url": "https://github.com/form-data/form-data/pull/582",
+    "merged_at": "2025-07-17T19:34:06Z",
+    "title": "Switch to newer v8 prediction library; enable node 24 testing",
+    "stats": {
+      "files": 2,
+      "addedLines": 32,
+      "removedLines": 10
+    }
+  },
+  "expected": [],
+  "expect_zero_findings": true,
+  "unlabeled": false,
+  "notes": "Test-only swap of a devDependency (predict-v8-randomness -> js-randomness-predictor) and async predictor wiring; non-shipping test infra, no library code change.",
+  "provenance": {
+    "kind": "real",
+    "source": "https://github.com/form-data/form-data/pull/582",
+    "note": "Reviewed-TN (single annotator): Test-only swap of a devDependency (predict-v8-randomness -> js-randomness-predictor) and async predictor wiring; non-shipping test infra, no library code change."
+  }
+}

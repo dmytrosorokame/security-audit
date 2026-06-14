@@ -1,0 +1,44 @@
+diff --git a/api/src/middleware/authz.ts b/api/src/middleware/authz.ts
+index 6060..7070 100644
+--- a/api/src/middleware/authz.ts
++++ b/api/src/middleware/authz.ts
+@@ -1,15 +1,15 @@
+ import type { Request, Response, NextFunction } from 'express';
+
+ export function requireOwner(getOwnerId: (req: Request) => string | undefined) {
+   return (req: Request, res: Response, next: NextFunction) => {
+     const ownerId = getOwnerId(req);
+     if (!ownerId) return res.status(400).json({ error: 'owner_unknown' });
+-    if (req.user?.id !== ownerId) return res.status(403).json({ error: 'forbidden' });
++    if (!req.user || req.user.id !== ownerId) return res.status(403).json({ error: 'forbidden' });
+     next();
+   };
+ }
+diff --git a/api/src/routes/documents.ts b/api/src/routes/documents.ts
+index 8080..9090 100644
+--- a/api/src/routes/documents.ts
++++ b/api/src/routes/documents.ts
+@@ -2,15 +2,12 @@ import { Router } from 'express';
+ import { requireOwner } from '../middleware/authz';
+ import { Document } from '../models/Document';
+
+ const router = Router();
+
+-router.use('/documents/:id', requireOwner(async req => {
+-  const doc = await Document.findByPk(req.params.id);
+-  return doc?.ownerId;
+-}));
+-
+ router.get('/documents/:id', async (req, res) => {
+   const doc = await Document.findByPk(req.params.id);
+   res.json(doc);
+ });
+
+-router.put('/documents/:id', async (req, res) => {
++router.put('/documents/:id', requireOwner(async req => {
++  const doc = await Document.findByPk(req.params.id);
++  return doc?.ownerId;
++}), async (req, res) => {
+   await Document.update(req.body, { where: { id: req.params.id } });
+   res.json({ ok: true });
+ });

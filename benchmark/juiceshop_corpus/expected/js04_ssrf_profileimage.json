@@ -1,0 +1,8 @@
+{
+  "name": "Juice Shop — SSRF: server fetches an attacker-supplied imageUrl",
+  "diff": "../diffs/js04_ssrf_profileimage.diff",
+  "expect_zero_findings": false,
+  "expected": [ { "rule_id": "B-04", "owasp_id": "A01", "cwe_id": "CWE-918", "severity": "high" } ],
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/profileImageUrlUpload.ts", "note": "Vulnerable side is verbatim-real Juice Shop master; safe baseline reconstructed (Juice Shop ships no in-repo fix). Challenge: SSRF." },
+  "notes": "url = req.body.imageUrl is passed directly to fetch(url) with no scheme/host allowlist, letting an attacker make the server request internal services or cloud metadata endpoints. Fix validates the URL against an https host allowlist before fetch."
+}

@@ -1,0 +1,14 @@
+diff --git a/routes/redirect.ts b/routes/redirect.ts
+index 5e6f7a8..6f7a8b9 100644
+--- a/routes/redirect.ts
++++ b/routes/redirect.ts
+@@ -9,8 +9,8 @@ export function performRedirect () {
+   return ({ query }: Request, res: Response, next: NextFunction) => {
+     const toUrl: string = query.to as string
+-    const isAllowed = security.redirectAllowlist.some((allowedUrl) => allowedUrl === toUrl)
++    const isAllowed = security.redirectAllowlist.some((allowedUrl) => toUrl.includes(allowedUrl))
+     if (isAllowed) {
+       res.redirect(toUrl)
+     } else {
+       res.status(406)
+       next(new Error('Unrecognized target URL for redirect: ' + toUrl))

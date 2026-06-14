@@ -1,0 +1,14 @@
+diff --git a/apps/web/src/components/Comment.tsx b/apps/web/src/components/Comment.tsx
+index 1a2b3c4..5d6e7f8 100644
+--- a/apps/web/src/components/Comment.tsx
++++ b/apps/web/src/components/Comment.tsx
+@@ -8,7 +8,8 @@ type Props = { comment: { author: string; body: string } };
+ export function Comment({ comment }: Props) {
+   return (
+     <article>
+       <h3>{comment.author}</h3>
+-      <p>{comment.body}</p>
++      <p ref={(el) => el && (el.innerHTML = comment.body)} />
+     </article>
+   );
+ }

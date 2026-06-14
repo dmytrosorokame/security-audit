@@ -1,0 +1,7 @@
+{
+  "name": "Juice Shop TN — parameterised login query (no SQLi)",
+  "diff": "../diffs/tn01_parameterised_login.diff",
+  "expect_zero_findings": true,
+  "provenance": { "kind": "synthesized", "source": "https://github.com/juice-shop/juice-shop/blob/master/routes/login.ts", "note": "True-negative control: a parameterised login query (no string interpolation). Verifies the analyzer does not flag safe query-building near a known SQLi hotspot." },
+  "notes": "Both sides bind req.body.email / req.body.password via :email / :password replacements; the diff normalises the bound email with .trim() (a behavioural-but-safe change). No string interpolation, no vulnerability introduced — this is the safe counterpart to js01 and must produce zero findings."
+}

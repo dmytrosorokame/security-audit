@@ -1,0 +1,14 @@
+{
+  "name": "Snyk breadth — cross-origin fetch with credentials:'include' and mode:'no-cors'",
+  "diff": "../diffs/sn06.diff",
+  "expect_zero_findings": false,
+  "expected": [
+    { "rule_id": "R-11", "owasp_id": "A02", "cwe_id": "CWE-942", "severity": "high" }
+  ],
+  "provenance": {
+    "kind": "synthesized",
+    "source": "https://portswigger.net/web-security/cors",
+    "note": "Constructed client snippet illustrating a CORS misconfiguration — a fetch() to a cross-origin partner endpoint with credentials:'include' and mode:'no-cors', sending session cookies cross-origin while suppressing CORS response checks. Breadth supplement (spec §4.3) — lower realism, not an external-validity claim."
+  },
+  "notes": "Vulnerable (+) side calls fetch('https://api.partner.com/me', { credentials: 'include', mode: 'no-cors' }) — R-11's documented true-positive combination; safe (-) side uses mode: 'cors' so the browser enforces the cross-origin contract (the server must return an exact-origin ACAO, never '*'). Matches R-11's client-fetch pattern directly."
+}
